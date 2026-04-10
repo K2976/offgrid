@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.hostname}:8100/api/v1`
+    : 'http://127.0.0.1:8100/api/v1');
 
 const api = axios.create({
   baseURL: API_BASE,

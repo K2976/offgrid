@@ -31,6 +31,14 @@ class UserAuthResponse(TokenResponse):
     name: str
 
 
+class UserProfileResponse(BaseModel):
+    id: str
+    email: EmailStr
+    name: str
+    company_name: str | None = None
+    onboarding_complete: bool = False
+
+
 class AnalyticsOverviewResponse(BaseModel):
     period: Literal["7d", "30d", "90d"]
     social: dict
@@ -91,6 +99,16 @@ class WorkspaceSettingsResponse(BaseModel):
     budget_monthly: float | None
     autopilot_enabled: bool
     autopilot_time: str
+
+
+class OnboardingProfileRequest(BaseModel):
+    workspace_name: str = Field(min_length=2, max_length=200)
+    mode: Literal["general", "custom"] = "general"
+    goals: list[str] = Field(default_factory=list, max_length=20)
+    budget_monthly: float | None = Field(default=None, ge=0)
+    autopilot_enabled: bool = True
+    autopilot_time: str = Field(default="08:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    company_name: str | None = Field(default=None, max_length=200)
 
 
 class BasicMessageResponse(BaseModel):

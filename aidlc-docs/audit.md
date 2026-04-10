@@ -90,3 +90,27 @@
 **Context**: CONSTRUCTION - Build and Test
 
 ---
+
+## Construction Request
+**Timestamp**: 2026-04-10T13:15:12Z
+**User Input**: "using AI-DLC check the frontend and backend integrate backend and frontend also create the api in  backend if they are not made for frontend and also check in compinetion section use wikipedia api but mention it any where in frontend  . and aslo use groq api and gemini api where needed according to the plan and also check the the entired frontend will be dyinamic and working and also create a user register and  entering question for the profile set up and also there should be  landing page cool one and also auth should be working from frontend and backend . and also deep think  yourself if there is any issue .."
+**AI Response**: "Integrated frontend-backend auth flow, added onboarding profile setup API and UI, converted competitors page to dynamic API-backed mode, enriched competitor analysis with Wikipedia source mention, added Groq/Gemini-backed AI generation fallback in backend services, and validated frontend with production build."
+**Context**: CONSTRUCTION - Integration hardening + feature completion
+
+---
+
+## Construction Request
+**Timestamp**: 2026-04-10T13:47:40Z
+**User Input**: "test the api and and frontend integration test create a new user and test all the api over that user"
+**AI Response**: "Executed full backend API integration test suite with a newly created user account, validated all endpoint groups, and ran frontend auth page integration smoke checks. Discovered and fixed auth registration blocker by switching password hashing scheme to pbkdf2_sha256 in backend security module, then re-ran tests with all checks passing."
+**Context**: CONSTRUCTION - Build and Test integration verification
+
+---
+
+## Construction Request
+**Timestamp**: 2026-04-10T13:53:19Z
+**User Input**: "http://localhost:3000/login  Invalid email or password cehck this issue"
+**AI Response**: "Diagnosed incorrect frontend API target: localhost:8000 resolved to another local service returning 401, causing false invalid-credentials UI. Updated frontend API base fallback to localhost:8100 where OffGrid backend is running, validated build, and confirmed login success with test credentials."
+**Context**: CONSTRUCTION - Frontend/backend integration bugfix
+
+---

@@ -1,21 +1,121 @@
 /* Auth Pages Styles */
 .authPage {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: var(--bg-base);
+  background: linear-gradient(160deg, #e5e7eb 0%, #d1d5db 48%, #111827 100%);
   padding: var(--spacing-lg);
+  overflow: hidden;
+}
+
+.authBackgroundWall {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 16px;
+  padding: 24px;
+  z-index: 0;
+}
+
+.authWallCard {
+  border-radius: 12px;
+  min-height: 220px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.22);
+}
+
+.authWallCardDark {
+  background: linear-gradient(175deg, #6b7280 0%, #4b5563 100%);
+  color: #e5e7eb;
+}
+
+.authWallCardLight {
+  background: linear-gradient(175deg, #f3f4f6 0%, #d1d5db 100%);
+  color: #4b5563;
+}
+
+.authWallCardTitle {
+  font-size: 1.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .authCard {
+  position: relative;
   width: 100%;
-  max-width: 420px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
+  max-width: 1040px;
+  background: rgba(10, 12, 16, 0.93);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  padding: 28px;
   animation: fadeIn 0.4s ease forwards;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.4);
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 24px;
+  z-index: 2;
+}
+
+.authShowcase {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.showcaseTitle {
+  color: #f9fafb;
+  font-size: clamp(1.7rem, 3.4vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+
+.showcaseTitleMuted {
+  color: #9ca3af;
+}
+
+.showcaseSubtitle {
+  color: #d1d5db;
+  line-height: 1.7;
+  margin-bottom: 18px;
+}
+
+.showcaseGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.showcaseItem {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 10px;
+  color: #e5e7eb;
+  font-size: 0.86rem;
+  min-height: 88px;
+}
+
+.showcaseItem strong {
+  display: block;
+  color: #f9fafb;
+  margin-bottom: 4px;
+  font-size: 0.88rem;
+}
+
+.authPanel {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .authLogo {
@@ -24,20 +124,25 @@
   gap: var(--spacing-sm);
   font-size: var(--font-size-xl);
   font-weight: 800;
-  color: var(--color-primary-light);
+  color: #e5e7eb;
   margin-bottom: var(--spacing-xl);
+}
+
+.brandText {
+  color: #f9fafb;
 }
 
 .authTitle {
   font-size: var(--font-size-2xl);
   font-weight: 700;
   margin-bottom: var(--spacing-xs);
+  color: #f9fafb;
 }
 
 .authSubtitle {
-  color: var(--text-secondary);
+  color: #d1d5db;
   font-size: var(--font-size-sm);
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: 12px;
 }
 
 .authForm {
@@ -47,7 +152,7 @@
 }
 
 .authError {
-  color: var(--color-danger);
+  color: #fca5a5;
   font-size: var(--font-size-sm);
   text-align: center;
 }
@@ -56,10 +161,52 @@
   text-align: center;
   margin-top: var(--spacing-lg);
   font-size: var(--font-size-sm);
-  color: var(--text-secondary);
+  color: #e5e7eb;
+}
+
+.authLink a {
+  color: #9ca3af;
+}
+
+.authInput {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #f9fafb !important;
+}
+
+.authInput::placeholder {
+  color: #9ca3af;
+}
+
+.authLabel {
+  color: #e5e7eb;
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 980px) {
+  .authBackgroundWall {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .authWallCard {
+    min-height: 170px;
+  }
+
+  .authWallCardTitle {
+    font-size: 1.3rem;
+  }
+
+  .authCard {
+    grid-template-columns: 1fr;
+  }
+
+  .showcaseGrid {
+    grid-template-columns: 1fr;
+  }
 }

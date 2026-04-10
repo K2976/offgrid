@@ -23,6 +23,24 @@ export interface AuthResponse {
   refresh_token: string;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  company_name?: string;
+  onboarding_complete: boolean;
+}
+
+export interface OnboardingRequest {
+  workspace_name: string;
+  mode: 'general' | 'custom';
+  goals: string[];
+  budget_monthly?: number;
+  autopilot_enabled: boolean;
+  autopilot_time: string;
+  company_name?: string;
+}
+
 export interface TokenResponse {
   access_token: string;
   refresh_token?: string;
@@ -172,6 +190,9 @@ export interface CompetitorAnalysis {
   campaigns_detected: CampaignDetected[];
   why_winning: string;
   counter_strategies: { strategy: string; reasoning: string; priority: string }[];
+  wikipedia_summary?: string;
+  wikipedia_url?: string;
+  external_sources?: string[];
 }
 
 export interface AddCompetitorRequest {

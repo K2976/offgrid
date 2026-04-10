@@ -1,8 +1,11 @@
 from datetime import date, datetime, timedelta
+from urllib.parse import quote
 
+import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models import (
     AIAnalysis,
     Alert,
@@ -18,6 +21,7 @@ from app.models import (
 from app.schemas import (
     AlertRuleCreateRequest,
     AnalyzeRequest,
+    OnboardingProfileRequest,
     AutopilotSettingsRequest,
     CompetitorCreateRequest,
     ContentFeedbackRequest,
@@ -79,9 +83,87 @@ def login_user(db: Session, payload: LoginRequest) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
         "access_token": create_access_token(user.id),
         "refresh_token": create_refresh_token(user.id),
     }
+
+
+def get_current_user_profile(user: User) -> dict:
+    onboarding_complete = bool(user.company_name)
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "company_name": user.company_name,
+        "onboarding_complete": onboarding_complete,
+    }
+
+
+def _call_groq(prompt: str) -> str | None:
+    if not settings.groq_api_key:
+        return None
+
+    try:
+        with httpx.Client(timeout=12.0) as client:
+            response = client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a concise growth-marketing analyst. Respond in plain text.",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    "temperature": 0.4,
+                    "max_tokens": 280,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"].strip()
+    except Exception:
+        return None
+
+
+def _call_gemini(prompt: str) -> str | None:
+    if not settings.gemini_api_key:
+        return None
+
+    try:
+        with httpx.Client(timeout=12.0) as client:
+            response = client.post(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+                params={"key": settings.gemini_api_key},
+                json={"contents": [{"parts": [{"text": prompt}]}]},
+            )
+            response.raise_for_status()
+            data = response.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                return None
+            parts = candidates[0].get("content", {}).get("parts", [])
+            text_parts = [part.get("text", "") for part in parts if part.get("text")]
+            return "\n".join(text_parts).strip() or None
+    except Exception:
+        return None
+
+
+def _generate_ai_text(prompt: str) -> tuple[str | None, str]:
+    groq_text = _call_groq(prompt)
+    if groq_text:
+        return groq_text, "groq"
+
+    gemini_text = _call_gemini(prompt)
+    if gemini_text:
+        return gemini_text, "gemini"
+
+    return None, "fallback"
 
 
 def refresh_access_token(db: Session, refresh_token: str) -> dict:
@@ -169,6 +251,17 @@ def analytics_seo(db: Session, user: User, period: str) -> dict:
 
 def run_ai_analysis(db: Session, user: User, payload: AnalyzeRequest) -> dict:
     workspace = _get_or_create_default_workspace(db, user)
+    goals_line = ", ".join(payload.goals) if payload.goals else "general growth"
+    prompt = (
+        f"Analyze marketing performance focus={payload.focus}, period={payload.period}, "
+        f"goals={goals_line}. Provide one concise key insight and one action."
+    )
+    model_text, model_used = _generate_ai_text(prompt)
+    generated_description = (
+        model_text
+        if model_text
+        else "Your strongest performance appears on weekends; replicate high-performing patterns there."
+    )
 
     response = {
         "generated_at": datetime.utcnow().isoformat() + "Z",
@@ -177,7 +270,7 @@ def run_ai_analysis(db: Session, user: User, payload: AnalyzeRequest) -> dict:
                 "id": "insight-1",
                 "type": "opportunity",
                 "title": "Weekend posts outperform weekdays",
-                "description": "Your weekend content consistently outperforms weekday posts.",
+                "description": generated_description[:500],
                 "confidence": 0.87,
                 "data_points": ["weekday_engagement: 3.2%", "weekend_engagement: 5.4%"],
                 "severity": "medium",
@@ -211,7 +304,7 @@ def run_ai_analysis(db: Session, user: User, payload: AnalyzeRequest) -> dict:
         insights=response["insights"],
         actions=response["actions"],
         content_ideas=response["content_ideas"],
-        model_used="groq+gemini",
+        model_used=model_used,
         tokens_used=0,
     )
     db.add(analysis)
@@ -294,6 +387,20 @@ def competitor_analysis(db: Session, user: User, competitor_id: str) -> dict:
     if not competitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Competitor not found")
 
+    wiki_summary = ""
+    wiki_url = f"https://en.wikipedia.org/wiki/{quote(competitor.name.replace(' ', '_'))}"
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            wiki_resp = client.get(
+                f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(competitor.name)}"
+            )
+            if wiki_resp.status_code == 200:
+                wiki_data = wiki_resp.json()
+                wiki_summary = wiki_data.get("extract", "")
+                wiki_url = wiki_data.get("content_urls", {}).get("desktop", {}).get("page", wiki_url)
+    except Exception:
+        wiki_summary = ""
+
     return {
         "competitor": competitor.name,
         "period": "30d",
@@ -312,6 +419,9 @@ def competitor_analysis(db: Session, user: User, competitor_id: str) -> dict:
                 "priority": "high",
             }
         ],
+        "wikipedia_summary": wiki_summary,
+        "wikipedia_url": wiki_url,
+        "external_sources": ["wikipedia"],
     }
 
 
@@ -319,7 +429,12 @@ def generate_content(db: Session, user: User, payload: ContentGenerateRequest) -
     workspace = _get_or_create_default_workspace(db, user)
     generated = []
     for index in range(payload.count):
-        text = (
+        prompt = (
+            f"Create one {payload.type} for {payload.platform} in {payload.tone} tone about '{payload.topic}'. "
+            f"Context: {payload.context}. Keep it under 90 words."
+        )
+        model_text, _ = _generate_ai_text(prompt)
+        text = model_text or (
             f"{payload.topic} - {payload.platform} draft {index + 1}. "
             f"Tone: {payload.tone}. Context: {payload.context[:120]}"
         )
@@ -596,4 +711,34 @@ def get_workspace_settings(db: Session, user: User) -> dict:
         "budget_monthly": workspace.budget_monthly,
         "autopilot_enabled": workspace.autopilot_enabled,
         "autopilot_time": workspace.autopilot_time,
+    }
+
+
+def upsert_onboarding_profile(db: Session, user: User, payload: OnboardingProfileRequest) -> dict:
+    workspace = _get_or_create_default_workspace(db, user)
+
+    workspace.name = payload.workspace_name
+    workspace.mode = payload.mode
+    workspace.goals = payload.goals
+    workspace.budget_monthly = payload.budget_monthly
+    workspace.autopilot_enabled = payload.autopilot_enabled
+    workspace.autopilot_time = payload.autopilot_time
+    user.company_name = payload.company_name
+
+    db.commit()
+    db.refresh(workspace)
+    db.refresh(user)
+
+    return {
+        "message": "Profile setup completed",
+        "workspace": {
+            "id": workspace.id,
+            "name": workspace.name,
+            "mode": workspace.mode,
+            "goals": workspace.goals,
+            "budget_monthly": workspace.budget_monthly,
+            "autopilot_enabled": workspace.autopilot_enabled,
+            "autopilot_time": workspace.autopilot_time,
+        },
+        "user": get_current_user_profile(user),
     }

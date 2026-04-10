@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Swords, Plus, Trash2, Eye, TrendingUp, BarChart2, Activity } from 'lucide-react';
-import { Card, Button, Input, Badge } from '@/components/ui/ui-components';
+import React, { useEffect, useState } from 'react';
+import { Swords, Plus, Trash2, Eye, BarChart2, Activity, ExternalLink } from 'lucide-react';
+import { Card, Button, Badge, EmptyState } from '@/components/ui/ui-components';
+import { useCompetitorStore } from '@/stores/app-stores';
 import {
   BarChart,
   Bar,
@@ -15,33 +16,46 @@ import {
 } from 'recharts';
 import styles from '../../dashboard.module.css';
 
-const mockCompetitors = [
-  { id: '1', name: 'CompetitorX', platforms: { instagram: '@competitorx', website: 'competitorx.com' }, auto_detected: false, tracking_since: '2026-03-01' },
-  { id: '2', name: 'MarketGuru', platforms: { instagram: '@marketguru', linkedin: 'marketguru' }, auto_detected: true, tracking_since: '2026-03-15' },
-];
-
-const mockAnalysis = {
-  competitor: 'CompetitorX',
-  metrics: { posting_frequency: 4.2, avg_engagement_rate: 6.1, follower_growth: 5.3, content_types: { reels: 45, carousels: 30, static: 25 } },
-  campaigns_detected: [{ name: 'Spring Sale Campaign', detected_at: '2026-04-01', post_count: 8, avg_engagement: 7.2 }],
-  why_winning: 'CompetitorX publishes 3x more Reels than you (45% vs 10%), driving 2x higher reach. Their campaign-based posting strategy creates engagement bursts that boost algorithmic visibility.',
-  counter_strategies: [
-    { strategy: 'Increase reel production to 4/week', reasoning: 'Reels have 2.5x higher reach than static posts', priority: 'high' },
-    { strategy: 'Launch a counter-campaign around your AI features', reasoning: 'Differentiate from their discount-based strategy', priority: 'medium' },
-  ],
-};
-
-const comparisonData = [
-  { metric: 'Engagement', You: 3.4, Competitor: 6.1 },
-  { metric: 'Growth (%)', You: 2.1, Competitor: 5.3 },
-  { metric: 'Posts/Wk', You: 2.5, Competitor: 4.2 },
-];
-
 export default function CompetitorsPage() {
+  const { competitors, selectedAnalysis, isLoading, fetchAll, add, remove, fetchAnalysis } = useCompetitorStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
   const [newHandle, setNewHandle] = useState('');
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  const comparisonData = [
+    { metric: 'Engagement', You: 3.4, Competitor: selectedAnalysis?.metrics?.avg_engagement_rate || 0 },
+    { metric: 'Growth (%)', You: 2.1, Competitor: selectedAnalysis?.metrics?.follower_growth || 0 },
+    { metric: 'Posts/Wk', You: 2.5, Competitor: selectedAnalysis?.metrics?.posting_frequency || 0 },
+  ];
+
+  const onTrack = async () => {
+    if (!newName.trim()) {
+      return;
+    }
+    await add(newName.trim(), { instagram: newHandle.trim() });
+    await fetchAll();
+    setShowAdd(false);
+    setNewName('');
+    setNewHandle('');
+  };
+
+  const onSelect = async (id: string) => {
+    setSelectedId(id);
+    await fetchAnalysis(id);
+  };
+
+  const onDelete = async (id: string) => {
+    await remove(id);
+    if (selectedId === id) {
+      setSelectedId(null);
+    }
+    await fetchAll();
+  };
 
   return (
     <div>
@@ -74,7 +88,7 @@ export default function CompetitorsPage() {
                 style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-strong)', outline: 'none', background: '#fff' }}
               />
             </div>
-            <Button data-testid="add-competitor-submit" onClick={() => { setShowAdd(false); setNewName(''); setNewHandle(''); }}>
+            <Button data-testid="add-competitor-submit" onClick={onTrack}>
               Track
             </Button>
           </div>
@@ -83,14 +97,24 @@ export default function CompetitorsPage() {
 
       {/* Competitors List */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-xl)' }}>
-        {mockCompetitors.map((c) => (
+        {!competitors.length && !isLoading && (
+          <Card>
+            <EmptyState
+              icon={<Swords size={18} />}
+              title="No competitors tracked"
+              description="Add your first competitor to unlock analysis and strategy recommendations."
+            />
+          </Card>
+        )}
+
+        {competitors.map((c) => (
           <Card 
             key={c.id} 
             style={{ 
               cursor: 'pointer', 
               border: selectedId === c.id ? '2px solid var(--color-primary)' : '1px solid var(--border-default)' 
             }} 
-            onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}
+            onClick={() => onSelect(c.id)}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
@@ -108,7 +132,8 @@ export default function CompetitorsPage() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
-                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedId(c.id); }}><Eye size={16} /></Button>
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); void onSelect(c.id); }}><Eye size={16} /></Button>
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); void onDelete(c.id); }}><Trash2 size={16} /></Button>
               </div>
             </div>
           </Card>
@@ -116,12 +141,12 @@ export default function CompetitorsPage() {
       </div>
 
       {/* Detailed Analysis Section (shown when a competitor is clicked) */}
-      {selectedId && (
+      {selectedId && selectedAnalysis && (
         <Card style={{ marginTop: 'var(--spacing-xl)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-lg)', paddingBottom: 'var(--spacing-md)', borderBottom: '1px solid var(--border-default)' }}>
              <BarChart2 size={24} color="var(--color-primary)" />
              <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--text-primary)' }}>
-               Analysis vs {mockAnalysis.competitor}
+               Analysis vs {selectedAnalysis.competitor}
              </h2>
           </div>
 
@@ -149,17 +174,17 @@ export default function CompetitorsPage() {
               <div style={{ background: 'var(--color-warning-bg)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', borderLeft: '4px solid var(--color-warning)' }}>
                 <h4 style={{ color: 'var(--text-primary)', marginBottom: 'var(--spacing-sm)', display: 'flex', alignItems: 'center', gap: 6 }}>
                    <Activity size={16} color="var(--color-warning)" />
-                   Intel: Why {mockAnalysis.competitor} is Winning
+                   Intel: Why {selectedAnalysis.competitor} is Winning
                 </h4>
                 <p style={{ fontSize: 'var(--font-size-sm)', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                  {mockAnalysis.why_winning}
+                  {selectedAnalysis.why_winning}
                 </p>
               </div>
 
               <div>
                 <h4 style={{ marginBottom: 'var(--spacing-sm)', fontSize: 'var(--font-size-md)', fontWeight: 600 }}>⚡ Recommended Counter Strategies</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-                  {mockAnalysis.counter_strategies.map((s, i) => (
+                  {selectedAnalysis.counter_strategies.map((s, i) => (
                     <div key={i} style={{ padding: 'var(--spacing-md)', border: '1px solid var(--border-default)', borderLeft: `4px solid ${s.priority === 'high' ? 'var(--color-danger)' : 'var(--color-warning)'}`, background: 'var(--bg-surface-raised)', borderRadius: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 4 }}>
                         <Badge color={s.priority === 'high' ? 'danger' : 'warning'}>{s.priority}</Badge>
@@ -170,6 +195,22 @@ export default function CompetitorsPage() {
                   ))}
                 </div>
               </div>
+
+              {!!selectedAnalysis.wikipedia_summary && (
+                <div style={{ background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', border: '1px solid var(--border-default)' }}>
+                  <h4 style={{ marginBottom: 8, fontSize: 'var(--font-size-md)', fontWeight: 600 }}>Public context source</h4>
+                  <p style={{ marginBottom: 8, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                    {selectedAnalysis.wikipedia_summary}
+                  </p>
+                  <a href={selectedAnalysis.wikipedia_url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)' }}>
+                    View on Wikipedia <ExternalLink size={14} />
+                  </a>
+                </div>
+              )}
+
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-xs)' }}>
+                Analysis may use public information sources, including Wikipedia.
+              </p>
             </div>
           </div>
         </Card>
