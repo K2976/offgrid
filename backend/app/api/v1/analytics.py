@@ -4,7 +4,14 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.dependencies import get_current_user
 from app.models import User
-from app.services import analytics_overview, analytics_seo, analytics_social, analytics_website
+from app.schemas import WebsiteAuditRequest
+from app.services import (
+    analytics_overview,
+    analytics_seo,
+    analytics_social,
+    analytics_website,
+    analytics_website_audit,
+)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -35,6 +42,15 @@ def get_website(
     user: User = Depends(get_current_user),
 ):
     return analytics_website(db, user, period)
+
+
+@router.post("/website-audit")
+def get_website_audit(
+    payload: WebsiteAuditRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return analytics_website_audit(db, user, str(payload.url), payload.strategy)
 
 
 @router.get("/seo")

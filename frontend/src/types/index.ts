@@ -102,6 +102,90 @@ export interface WebsiteAnalytics {
   daily_data: { date: string; visits: number; bounce_rate: number }[];
 }
 
+export interface WebsiteAudit {
+  url: string;
+  strategy: 'mobile' | 'desktop';
+  site_profile: {
+    hostname: string;
+    google_analytics_connected: boolean;
+    google_analytics_note?: string | null;
+  };
+  scores: {
+    performance: number;
+    seo: number;
+    accessibility: number;
+    best_practices: number;
+  };
+  api_coverage?: Record<string, boolean>;
+  performance_details?: {
+    first_contentful_paint?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
+    largest_contentful_paint?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
+    total_blocking_time?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
+    cumulative_layout_shift?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
+    speed_index?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
+    time_to_interactive?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
+    server_response_time?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
+    interactive?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
+  };
+  opportunities?: Array<{
+    id: string;
+    title?: string;
+    impact?: string;
+    numeric_impact?: number;
+    description?: string;
+  }>;
+  diagnostics?: Array<{
+    id: string;
+    title?: string;
+    score?: number;
+    value?: string;
+  }>;
+  traffic?: {
+    source: 'ga4';
+    property_id: string;
+    range: string;
+    totals: {
+      users: number;
+      new_users: number;
+      sessions: number;
+      page_views: number;
+      engaged_sessions: number;
+      avg_session_duration_seconds: number;
+      bounce_rate: number;
+      engagement_rate: number;
+      conversions: number;
+    };
+    channels: Array<{
+      channel: string;
+      sessions: number;
+      users: number;
+      conversions: number;
+    }>;
+    top_pages: Array<{
+      path: string;
+      views: number;
+      users: number;
+      engagement_seconds: number;
+      entrances: number;
+    }>;
+    daily: Array<{
+      date: string;
+      sessions: number;
+      users: number;
+      page_views: number;
+    }>;
+  } | null;
+  core_web_vitals: {
+    fcp?: string;
+    lcp?: string;
+    tbt?: string;
+    cls?: string;
+    speed_index?: string;
+    tti?: string;
+  };
+  fetched_at: string;
+}
+
 export interface SEOKeyword {
   keyword: string;
   position: number;
@@ -190,6 +274,7 @@ export interface CompetitorAnalysis {
   campaigns_detected: CampaignDetected[];
   why_winning: string;
   counter_strategies: { strategy: string; reasoning: string; priority: string }[];
+  comeback_playbook?: { phase: string; focus: string; actions: string[] }[];
   market_context_summary?: string;
   detailed_brief?: string;
   brief_model_used?: string;

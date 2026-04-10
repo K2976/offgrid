@@ -14,3 +14,23 @@ FastAPI backend for the OffGrid AI marketing co-pilot.
 ## Base URL
 
 - `http://localhost:8000/api/v1`
+
+
+cd backend
+source ../.venv/bin/activate
+uvicorn app.main:app --reload --port 8000
+
+
+
+cd frontend
+npm install
+npm run dev
+
+
+
+### clean and restrt 
+
+pkill -f "uvicorn app.main:app" || true
+cd backend
+source ../.venv/bin/activate
+uvicorn app.main:app --reload --port 8000

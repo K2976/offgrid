@@ -16,6 +16,21 @@ export default function SettingsPage() {
   const [mode, setMode] = useState('general');
   const [goals, setGoals] = useState('growth');
   const [autopilot, setAutopilot] = useState(true);
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [savedMsg, setSavedMsg] = useState('');
+
+  const saveWebsiteProfile = () => {
+    if (!websiteUrl.trim()) return;
+    localStorage.setItem('preferred_website_url', websiteUrl.trim());
+    setSavedMsg('Website profile saved. Analytics dashboard will use this URL.');
+  };
+
+  React.useEffect(() => {
+    const preferred = localStorage.getItem('preferred_website_url');
+    if (preferred) {
+      setWebsiteUrl(preferred);
+    }
+  }, []);
 
   return (
     <div>
@@ -89,6 +104,22 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
+      </Card>
+
+      <Card style={{ marginTop: 'var(--spacing-xl)' }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--spacing-lg)', fontWeight: 600 }}>
+          <Link2 size={18} color="var(--color-primary-light)" /> Website Profile
+        </h3>
+        <Input
+          label="Primary Website URL"
+          placeholder="https://yourwebsite.com"
+          value={websiteUrl}
+          onChange={(e) => setWebsiteUrl(e.target.value)}
+        />
+        <div style={{ marginTop: 'var(--spacing-md)', display: 'flex', justifyContent: 'flex-end' }}>
+          <Button onClick={saveWebsiteProfile}>Save Website URL</Button>
+        </div>
+        {savedMsg && <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--color-success)' }}>{savedMsg}</p>}
       </Card>
     </div>
   );

@@ -1,5 +1,6 @@
+import json
 from datetime import date, datetime, timedelta
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import httpx
 from fastapi import HTTPException, status
@@ -410,6 +411,345 @@ def analytics_seo(db: Session, user: User, period: str) -> dict:
     }
 
 
+def _hostname(raw_url: str) -> str:
+    parsed = urlparse(raw_url)
+    return (parsed.netloc or "").lower().replace("www.", "")
+
+
+def _is_same_site(requested_url: str, configured_site_url: str) -> bool:
+    if not configured_site_url:
+        return False
+    return _hostname(requested_url) == _hostname(configured_site_url)
+
+
+def _ga_credentials_dict() -> dict | None:
+    if not settings.google_analytics_credentials_json:
+        return None
+
+    raw = settings.google_analytics_credentials_json.strip()
+    if not raw:
+        return None
+
+    try:
+        return json.loads(raw)
+    except Exception:
+        return None
+
+
+def _ga4_traffic_for_site(website_url: str) -> tuple[dict | None, str | None]:
+    property_id = (settings.google_analytics_property_id or "").strip()
+    if not property_id:
+        return None, "Google Analytics property is not configured"
+
+    creds_dict = _ga_credentials_dict()
+    if not creds_dict:
+        return None, "Google Analytics credentials JSON is missing or invalid"
+
+    if not _is_same_site(website_url, settings.google_search_console_site_url):
+        return (
+            None,
+            "Traffic can be shown only for your connected property domain. "
+            "Update GOOGLE_SEARCH_CONSOLE_SITE_URL to match the pasted website.",
+        )
+
+    try:
+        from google.analytics.data_v1beta import BetaAnalyticsDataClient
+        from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
+        from google.oauth2 import service_account
+    except Exception:
+        return None, "google-analytics-data package is not installed on backend"
+
+    try:
+        credentials = service_account.Credentials.from_service_account_info(creds_dict)
+        client = BetaAnalyticsDataClient(credentials=credentials)
+
+        common_ranges = [DateRange(start_date="30daysAgo", end_date="today")]
+
+        totals_resp = client.run_report(
+            RunReportRequest(
+                property=f"properties/{property_id}",
+                date_ranges=common_ranges,
+                dimensions=[],
+                metrics=[
+                    Metric(name="totalUsers"),
+                    Metric(name="newUsers"),
+                    Metric(name="sessions"),
+                    Metric(name="screenPageViews"),
+                    Metric(name="engagedSessions"),
+                    Metric(name="averageSessionDuration"),
+                    Metric(name="bounceRate"),
+                    Metric(name="engagementRate"),
+                    Metric(name="conversions"),
+                ],
+            )
+        )
+
+        channels_resp = client.run_report(
+            RunReportRequest(
+                property=f"properties/{property_id}",
+                date_ranges=common_ranges,
+                dimensions=[Dimension(name="sessionDefaultChannelGroup")],
+                metrics=[Metric(name="sessions"), Metric(name="totalUsers"), Metric(name="conversions")],
+                limit=8,
+            )
+        )
+
+        pages_resp = client.run_report(
+            RunReportRequest(
+                property=f"properties/{property_id}",
+                date_ranges=common_ranges,
+                dimensions=[Dimension(name="pagePath")],
+                metrics=[
+                    Metric(name="screenPageViews"),
+                    Metric(name="totalUsers"),
+                    Metric(name="userEngagementDuration"),
+                    Metric(name="entrances"),
+                ],
+                order_bys=[],
+                limit=10,
+            )
+        )
+
+        daily_resp = client.run_report(
+            RunReportRequest(
+                property=f"properties/{property_id}",
+                date_ranges=common_ranges,
+                dimensions=[Dimension(name="date")],
+                metrics=[Metric(name="sessions"), Metric(name="totalUsers"), Metric(name="screenPageViews")],
+                limit=30,
+            )
+        )
+    except Exception as exc:
+        return None, f"Unable to fetch Google Analytics data: {str(exc)}"
+
+    totals = {
+        "users": 0,
+        "new_users": 0,
+        "sessions": 0,
+        "page_views": 0,
+        "engaged_sessions": 0,
+        "avg_session_duration_seconds": 0.0,
+        "bounce_rate": 0.0,
+        "engagement_rate": 0.0,
+        "conversions": 0.0,
+    }
+
+    if totals_resp.rows:
+        values = [metric.value for metric in totals_resp.rows[0].metric_values]
+        totals = {
+            "users": int(float(values[0])),
+            "new_users": int(float(values[1])),
+            "sessions": int(float(values[2])),
+            "page_views": int(float(values[3])),
+            "engaged_sessions": int(float(values[4])),
+            "avg_session_duration_seconds": round(float(values[5]), 2),
+            "bounce_rate": round(float(values[6]) * 100, 2),
+            "engagement_rate": round(float(values[7]) * 100, 2),
+            "conversions": round(float(values[8]), 2),
+        }
+
+    channels = [
+        {
+            "channel": row.dimension_values[0].value,
+            "sessions": int(float(row.metric_values[0].value)),
+            "users": int(float(row.metric_values[1].value)),
+            "conversions": round(float(row.metric_values[2].value), 2),
+        }
+        for row in channels_resp.rows
+    ]
+
+    top_pages = [
+        {
+            "path": row.dimension_values[0].value,
+            "views": int(float(row.metric_values[0].value)),
+            "users": int(float(row.metric_values[1].value)),
+            "engagement_seconds": round(float(row.metric_values[2].value), 2),
+            "entrances": int(float(row.metric_values[3].value)),
+        }
+        for row in pages_resp.rows
+    ]
+
+    daily = [
+        {
+            "date": row.dimension_values[0].value,
+            "sessions": int(float(row.metric_values[0].value)),
+            "users": int(float(row.metric_values[1].value)),
+            "page_views": int(float(row.metric_values[2].value)),
+        }
+        for row in daily_resp.rows
+    ]
+
+    return {
+        "source": "ga4",
+        "property_id": property_id,
+        "range": "last_30_days",
+        "totals": totals,
+        "channels": channels,
+        "top_pages": top_pages,
+        "daily": daily,
+    }, None
+
+
+def analytics_website_audit(db: Session, user: User, website_url: str, strategy: str) -> dict:
+    _get_or_create_default_workspace(db, user)
+
+    if not settings.pagespeed_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PageSpeed API key is not configured",
+        )
+
+    try:
+        with httpx.Client(timeout=25.0) as client:
+            response = client.get(
+                "https://www.googleapis.com/pagespeedonline/v5/runPagespeed",
+                params={
+                    "url": website_url,
+                    "strategy": strategy,
+                    "category": ["performance", "accessibility", "best-practices", "seo"],
+                    "key": settings.pagespeed_api_key,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPStatusError as exc:
+        provider_message = "PageSpeed API request failed"
+        try:
+            provider_message = exc.response.json().get("error", {}).get("message", provider_message)
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"{provider_message} (status {exc.response.status_code})",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to fetch website audit from PageSpeed API",
+        ) from exc
+
+    lighthouse = data.get("lighthouseResult", {})
+    categories = lighthouse.get("categories", {})
+    audits = lighthouse.get("audits", {})
+
+    def score(category_key: str) -> int:
+        raw = categories.get(category_key, {}).get("score")
+        return int(round(float(raw) * 100)) if raw is not None else 0
+
+    def metric(audit_key: str) -> dict:
+        item = audits.get(audit_key, {})
+        numeric = item.get("numericValue")
+        try:
+            numeric = float(numeric) if numeric is not None else None
+        except Exception:
+            numeric = None
+        return {
+            "id": audit_key,
+            "title": item.get("title"),
+            "value": item.get("displayValue"),
+            "numeric_value": numeric,
+            "description": item.get("description"),
+        }
+
+    opportunities = []
+    for audit_id, item in audits.items():
+        details = item.get("details", {})
+        if details.get("type") != "opportunity":
+            continue
+        numeric = item.get("numericValue")
+        try:
+            numeric = float(numeric) if numeric is not None else 0.0
+        except Exception:
+            numeric = 0.0
+        opportunities.append(
+            {
+                "id": audit_id,
+                "title": item.get("title"),
+                "impact": item.get("displayValue"),
+                "numeric_impact": numeric,
+                "description": item.get("description"),
+            }
+        )
+    opportunities.sort(key=lambda x: x.get("numeric_impact", 0.0), reverse=True)
+
+    diagnostics = []
+    for audit_id, item in audits.items():
+        score_value = item.get("score")
+        try:
+            score_value = float(score_value) if score_value is not None else None
+        except Exception:
+            score_value = None
+        if score_value is None or score_value >= 0.9:
+            continue
+        diagnostics.append(
+            {
+                "id": audit_id,
+                "title": item.get("title"),
+                "score": int(round(score_value * 100)),
+                "value": item.get("displayValue"),
+            }
+        )
+
+    diagnostics = diagnostics[:10]
+
+    traffic_data, traffic_error = _ga4_traffic_for_site(website_url)
+
+    return {
+        "url": website_url,
+        "strategy": strategy,
+        "site_profile": {
+            "hostname": _hostname(website_url),
+            "google_analytics_connected": traffic_data is not None,
+            "google_analytics_note": traffic_error,
+        },
+        "api_coverage": {
+            "pagespeed_insights_api": True,
+            "google_analytics_data_api": traffic_data is not None,
+            "bigquery_api": False,
+            "bigquery_connection_api": False,
+            "bigquery_data_policy_api": False,
+            "bigquery_data_transfer_api": False,
+            "bigquery_migration_api": False,
+            "cloud_trace_api": False,
+            "dataform_api": False,
+            "google_cloud_storage_json_api": False,
+            "service_management_api": False,
+            "service_usage_api": False,
+            "telemetry_api": False,
+            "analytics_hub_api": False,
+            "google_cloud_apis": True,
+        },
+        "scores": {
+            "performance": score("performance"),
+            "seo": score("seo"),
+            "accessibility": score("accessibility"),
+            "best_practices": score("best-practices"),
+        },
+        "performance_details": {
+            "first_contentful_paint": metric("first-contentful-paint"),
+            "largest_contentful_paint": metric("largest-contentful-paint"),
+            "total_blocking_time": metric("total-blocking-time"),
+            "cumulative_layout_shift": metric("cumulative-layout-shift"),
+            "speed_index": metric("speed-index"),
+            "time_to_interactive": metric("interactive"),
+            "server_response_time": metric("server-response-time"),
+            "interactive": metric("interactive"),
+        },
+        "opportunities": opportunities[:8],
+        "diagnostics": diagnostics,
+        "traffic": traffic_data,
+        "core_web_vitals": {
+            "fcp": audits.get("first-contentful-paint", {}).get("displayValue"),
+            "lcp": audits.get("largest-contentful-paint", {}).get("displayValue"),
+            "tbt": audits.get("total-blocking-time", {}).get("displayValue"),
+            "cls": audits.get("cumulative-layout-shift", {}).get("displayValue"),
+            "speed_index": audits.get("speed-index", {}).get("displayValue"),
+            "tti": audits.get("interactive", {}).get("displayValue"),
+        },
+        "fetched_at": datetime.utcnow().isoformat() + "Z",
+    }
+
+
 def run_ai_analysis(db: Session, user: User, payload: AnalyzeRequest) -> dict:
     workspace = _get_or_create_default_workspace(db, user)
     goals_line = ", ".join(payload.goals) if payload.goals else "general growth"
@@ -554,6 +894,7 @@ def competitor_analysis(db: Session, user: User, competitor_id: str) -> dict:
     brief_prompt = (
         f"Write a detailed 500-word competitive brief for {competitor.name} in the {niche} niche. "
         "Explain market positioning, content strategy, growth motions, likely funnel structure, strengths, weaknesses, and tactical opportunities to beat them. "
+        "Include practical recovery guidance for a brand that is currently behind this competitor. "
         f"Use this market context when relevant: {market_context or 'No external context available.'}"
     )
     ai_brief, brief_model = _generate_ai_text_fast(brief_prompt, max_tokens=1100)
@@ -567,6 +908,32 @@ def competitor_analysis(db: Session, user: User, competitor_id: str) -> dict:
         )
 
     counter_strategies = _build_counter_strategies(niche)
+    comeback_playbook = [
+        {
+            "phase": "Week 1-2",
+            "focus": "Stabilize positioning and messaging",
+            "actions": [
+                "Define one clear niche promise and rewrite all profile/bio copy around it.",
+                "Ship a fixed publishing schedule with 4 high-signal posts per week.",
+            ],
+        },
+        {
+            "phase": "Week 3-6",
+            "focus": "Out-execute on format and distribution",
+            "actions": [
+                "Launch a recurring educational content series tied to real buyer pain points.",
+                "Repurpose every winning post into short video, carousel, and text variants.",
+            ],
+        },
+        {
+            "phase": "Week 7-12",
+            "focus": "Convert audience momentum into pipeline",
+            "actions": [
+                "Attach explicit CTA paths from high-performing content to lead capture pages.",
+                "Run weekly competitor-response experiments and keep only top-performing plays.",
+            ],
+        },
+    ]
 
     return {
         "competitor": competitor.name,
@@ -580,6 +947,7 @@ def competitor_analysis(db: Session, user: User, competitor_id: str) -> dict:
         "campaigns_detected": [],
         "why_winning": "They combine consistent publishing cadence, clear positioning, and stronger mid-funnel conversion content.",
         "counter_strategies": counter_strategies,
+        "comeback_playbook": comeback_playbook,
         "market_context_summary": market_context,
         "detailed_brief": detailed_brief,
         "brief_model_used": brief_model,

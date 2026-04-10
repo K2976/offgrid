@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import api from '@/lib/api';
-import type { AnalyticsOverview, SocialAnalytics, WebsiteAnalytics, SEOAnalytics } from '@/types';
+import type { AnalyticsOverview, SocialAnalytics, WebsiteAnalytics, SEOAnalytics, WebsiteAudit } from '@/types';
 
 interface AnalyticsState {
   overview: AnalyticsOverview | null;
   social: SocialAnalytics | null;
   website: WebsiteAnalytics | null;
   seo: SEOAnalytics | null;
+  websiteAudit: WebsiteAudit | null;
   period: string;
   isLoading: boolean;
   error: string | null;
@@ -15,6 +16,7 @@ interface AnalyticsState {
   fetchSocial: (platform?: string) => Promise<void>;
   fetchWebsite: () => Promise<void>;
   fetchSEO: () => Promise<void>;
+  fetchWebsiteAudit: (url: string, strategy?: 'mobile' | 'desktop') => Promise<void>;
 }
 
 export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
@@ -22,6 +24,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
   social: null,
   website: null,
   seo: null,
+  websiteAudit: null,
   period: '30d',
   isLoading: false,
   error: null,
@@ -65,6 +68,16 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
       set({ seo: res.data, isLoading: false });
     } catch (err) {
       set({ error: 'Failed to fetch SEO data', isLoading: false });
+    }
+  },
+
+  fetchWebsiteAudit: async (url, strategy = 'mobile') => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await api.post<WebsiteAudit>('/analytics/website-audit', { url, strategy });
+      set({ websiteAudit: res.data, isLoading: false });
+    } catch {
+      set({ error: 'Failed to run website audit. Check URL and try again.', isLoading: false });
     }
   },
 }));

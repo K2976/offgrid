@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl
 
 
 class RegisterRequest(BaseModel):
@@ -51,6 +51,11 @@ class AnalyzeRequest(BaseModel):
     focus: Literal["all", "social", "website", "seo"] = "all"
     period: Literal["7d", "30d", "90d"] = "7d"
     goals: list[str] = Field(default_factory=list, max_length=20)
+
+
+class WebsiteAuditRequest(BaseModel):
+    url: HttpUrl
+    strategy: Literal["mobile", "desktop"] = "mobile"
 
 
 class ContentGenerateRequest(BaseModel):

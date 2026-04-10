@@ -11,3 +11,5 @@ email-validator==2.2.0
 alembic==1.16.5
 httpx==0.28.1
 slowapi==0.1.9
+google-analytics-data==0.18.13
+google-auth==2.40.3

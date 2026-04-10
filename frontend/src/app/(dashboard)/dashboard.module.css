@@ -102,9 +102,36 @@
   font-weight: 700;
 }
 
+.responsiveFormGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: var(--spacing-md);
+  align-items: end;
+}
+
+.responsiveTwoCol {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.mutedText {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
 @media (max-width: 1024px) {
   .dashGrid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .responsiveFormGrid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -115,5 +142,9 @@
 
   .insightRow {
     flex-direction: column;
+  }
+
+  .responsiveTwoCol {
+    grid-template-columns: 1fr;
   }
 }

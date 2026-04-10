@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     google_analytics_credentials_json: str = ""
     google_search_console_site_url: str = ""
     google_search_console_credentials_json: str = ""
+    pagespeed_api_key: str = ""
 
     telegram_bot_token: str = ""
     telegram_default_chat_id: str = ""
