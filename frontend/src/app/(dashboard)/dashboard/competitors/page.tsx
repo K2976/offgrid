@@ -1,13 +1,23 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Swords, Plus, Trash2, Eye } from 'lucide-react';
+import { Swords, Plus, Trash2, Eye, TrendingUp, BarChart2, Activity } from 'lucide-react';
 import { Card, Button, Input, Badge } from '@/components/ui/ui-components';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from 'recharts';
 import styles from '../../dashboard.module.css';
 
 const mockCompetitors = [
-  { id: '1', name: 'CompetitorX', platforms: { instagram: '@competitorx', website: 'https://competitorx.com' }, auto_detected: false, tracking_since: '2026-03-01' },
-  { id: '2', name: 'MarketGuru', platforms: { instagram: '@marketguru', linkedin: 'company/marketguru' }, auto_detected: true, tracking_since: '2026-03-15' },
+  { id: '1', name: 'CompetitorX', platforms: { instagram: '@competitorx', website: 'competitorx.com' }, auto_detected: false, tracking_since: '2026-03-01' },
+  { id: '2', name: 'MarketGuru', platforms: { instagram: '@marketguru', linkedin: 'marketguru' }, auto_detected: true, tracking_since: '2026-03-15' },
 ];
 
 const mockAnalysis = {
@@ -21,6 +31,12 @@ const mockAnalysis = {
   ],
 };
 
+const comparisonData = [
+  { metric: 'Engagement', You: 3.4, Competitor: 6.1 },
+  { metric: 'Growth (%)', You: 2.1, Competitor: 5.3 },
+  { metric: 'Posts/Wk', You: 2.5, Competitor: 4.2 },
+];
+
 export default function CompetitorsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -29,86 +45,133 @@ export default function CompetitorsPage() {
 
   return (
     <div>
-      <div className={styles.sectionHeader}>
-        <h1 className={styles.pageTitle}>Competitors</h1>
+      <div className={styles.pageHeader}>
+        <div>
+          <h1 className={styles.pageTitle}>Competitor Analysis</h1>
+          <p className={styles.pageSubtitle}>Track and compare your performance against market rivals.</p>
+        </div>
         <Button onClick={() => setShowAdd(!showAdd)} data-testid="add-competitor-button">
           <Plus size={16} /> Add Competitor
         </Button>
       </div>
 
       {showAdd && (
-        <Card style={{ marginBottom: 'var(--spacing-lg)' }}>
-          <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'flex-end' }}>
-            <Input label="Name" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="CompetitorX" data-testid="add-competitor-name-input" />
-            <Input label="Instagram Handle" value={newHandle} onChange={(e) => setNewHandle(e.target.value)} placeholder="@handle" data-testid="add-competitor-handle-input" />
-            <Button data-testid="add-competitor-submit" onClick={() => { setShowAdd(false); setNewName(''); setNewHandle(''); }}>Track</Button>
+        <Card style={{ marginBottom: 'var(--spacing-xl)', background: 'var(--bg-surface-raised)' }}>
+          <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <label style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Name</label>
+              <input 
+                value={newName} onChange={(e) => setNewName(e.target.value)} 
+                placeholder="Competitor Name" 
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-strong)', outline: 'none', background: '#fff' }}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <label style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Instagram Handle</label>
+              <input 
+                value={newHandle} onChange={(e) => setNewHandle(e.target.value)} 
+                placeholder="@handle" 
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-strong)', outline: 'none', background: '#fff' }}
+              />
+            </div>
+            <Button data-testid="add-competitor-submit" onClick={() => { setShowAdd(false); setNewName(''); setNewHandle(''); }}>
+              Track
+            </Button>
           </div>
         </Card>
       )}
 
-      <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
+      {/* Competitors List */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-xl)' }}>
         {mockCompetitors.map((c) => (
-          <Card key={c.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Card 
+            key={c.id} 
+            style={{ 
+              cursor: 'pointer', 
+              border: selectedId === c.id ? '2px solid var(--color-primary)' : '1px solid var(--border-default)' 
+            }} 
+            onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                  <Swords size={16} color="var(--color-primary-light)" />
-                  <strong style={{ fontSize: 'var(--font-size-lg)' }}>{c.name}</strong>
+                  <Swords size={18} color={selectedId === c.id ? "var(--color-primary)" : "var(--text-tertiary)"} />
+                  <strong style={{ fontSize: 'var(--font-size-lg)', color: 'var(--text-primary)' }}>{c.name}</strong>
                   {c.auto_detected && <Badge color="info">AUTO</Badge>}
                 </div>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', marginTop: 4 }}>
-                  {Object.entries(c.platforms).map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                  {Object.entries(c.platforms).map(([k, v]) => (
+                    <span key={k} style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-size-xs)' }}>
+                       <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{k}:</span> {v}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedId(c.id); }}><Eye size={14} /> Analyze</Button>
-                <Button variant="ghost" size="sm"><Trash2 size={14} /></Button>
+              <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedId(c.id); }}><Eye size={16} /></Button>
               </div>
             </div>
           </Card>
         ))}
       </div>
 
+      {/* Detailed Analysis Section (shown when a competitor is clicked) */}
       {selectedId && (
-        <Card style={{ marginTop: 'var(--spacing-xl)' }} glow>
-          <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 'var(--spacing-md)' }}>
-            ⚔️ Analysis: {mockAnalysis.competitor}
-          </h2>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>{mockAnalysis.metrics.posting_frequency}</div>
-              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>Posts/Week</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--color-success)' }}>{mockAnalysis.metrics.avg_engagement_rate}%</div>
-              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>Engagement</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--color-accent)' }}>{mockAnalysis.metrics.follower_growth}%</div>
-              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>Growth</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>{mockAnalysis.campaigns_detected.length}</div>
-              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>Campaigns</div>
-            </div>
+        <Card style={{ marginTop: 'var(--spacing-xl)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-lg)', paddingBottom: 'var(--spacing-md)', borderBottom: '1px solid var(--border-default)' }}>
+             <BarChart2 size={24} color="var(--color-primary)" />
+             <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--text-primary)' }}>
+               Analysis vs {mockAnalysis.competitor}
+             </h2>
           </div>
 
-          <div style={{ background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-            <h4 style={{ color: 'var(--color-warning)', marginBottom: 'var(--spacing-sm)' }}>🧠 Why They&apos;re Winning</h4>
-            <p style={{ fontSize: 'var(--font-size-sm)', lineHeight: 1.7 }}>{mockAnalysis.why_winning}</p>
-          </div>
-
-          <h4 style={{ marginBottom: 'var(--spacing-sm)' }}>⚡ Counter Strategies</h4>
-          {mockAnalysis.counter_strategies.map((s, i) => (
-            <div key={i} style={{ padding: 'var(--spacing-md)', borderLeft: `3px solid ${s.priority === 'high' ? 'var(--color-danger)' : 'var(--color-warning)'}`, background: 'var(--bg-surface-raised)', borderRadius: '0 var(--radius-sm) var(--radius-sm) 0', marginBottom: 'var(--spacing-sm)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                <Badge color={s.priority === 'high' ? 'danger' : 'warning'}>{s.priority}</Badge>
-                <strong style={{ fontSize: 'var(--font-size-sm)' }}>{s.strategy}</strong>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-xl)', marginBottom: 'var(--spacing-xl)' }}>
+            {/* Comparison Chart */}
+            <div>
+              <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>Head-to-Head Comparison</h3>
+              <div style={{ height: 250, width: '100%', background: 'var(--bg-surface-raised)', borderRadius: 8, padding: 'var(--spacing-md)' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={comparisonData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border-subtle)" />
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }} />
+                    <YAxis dataKey="metric" type="category" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} width={80} />
+                    <Tooltip cursor={{ fill: 'var(--border-default)' }} contentStyle={{ borderRadius: 8, border: 'none', boxShadow: 'var(--shadow-md)' }} />
+                    <Legend />
+                    <Bar dataKey="You" fill="var(--color-accent)" radius={[0, 4, 4, 0]} barSize={12} />
+                    <Bar dataKey="Competitor" fill="var(--color-primary)" radius={[0, 4, 4, 0]} barSize={12} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-              <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>{s.reasoning}</p>
             </div>
-          ))}
+
+            {/* Why They're Winning & Action Alerts */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+              <div style={{ background: 'var(--color-warning-bg)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', borderLeft: '4px solid var(--color-warning)' }}>
+                <h4 style={{ color: 'var(--text-primary)', marginBottom: 'var(--spacing-sm)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                   <Activity size={16} color="var(--color-warning)" />
+                   Intel: Why {mockAnalysis.competitor} is Winning
+                </h4>
+                <p style={{ fontSize: 'var(--font-size-sm)', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                  {mockAnalysis.why_winning}
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ marginBottom: 'var(--spacing-sm)', fontSize: 'var(--font-size-md)', fontWeight: 600 }}>⚡ Recommended Counter Strategies</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                  {mockAnalysis.counter_strategies.map((s, i) => (
+                    <div key={i} style={{ padding: 'var(--spacing-md)', border: '1px solid var(--border-default)', borderLeft: `4px solid ${s.priority === 'high' ? 'var(--color-danger)' : 'var(--color-warning)'}`, background: 'var(--bg-surface-raised)', borderRadius: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 4 }}>
+                        <Badge color={s.priority === 'high' ? 'danger' : 'warning'}>{s.priority}</Badge>
+                        <strong style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>{s.strategy}</strong>
+                      </div>
+                      <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', paddingLeft: 60 }}>{s.reasoning}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </Card>
       )}
     </div>

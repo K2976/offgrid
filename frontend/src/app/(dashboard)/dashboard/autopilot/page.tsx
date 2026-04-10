@@ -31,16 +31,19 @@ const mockBriefs = [
 export default function AutopilotPage() {
   return (
     <div>
-      <div className={styles.sectionHeader}>
-        <h1 className={styles.pageTitle}>Autopilot</h1>
+      <div className={styles.pageHeader}>
+        <div>
+          <h1 className={styles.pageTitle}>Autopilot Insights</h1>
+          <p className={styles.pageSubtitle}>AI-driven recommendations based on your recent activity.</p>
+        </div>
         <Badge color="success">Active</Badge>
       </div>
 
       {mockBriefs.map((brief, idx) => (
-        <Card key={brief.date} style={{ marginBottom: 'var(--spacing-lg)' }} glow={idx === 0}>
+        <Card key={brief.date} style={{ marginBottom: 'var(--spacing-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-lg)' }}>
-            <Bot size={20} color="var(--color-primary-light)" />
-            <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700 }}>{idx === 0 ? 'Today' : 'Yesterday'}</span>
+            <Bot size={20} color="var(--color-primary)" />
+            <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>{idx === 0 ? 'Today' : 'Yesterday'}</span>
             <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-sm)' }}>{brief.date}</span>
           </div>
 

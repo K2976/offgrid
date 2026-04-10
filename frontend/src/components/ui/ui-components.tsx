@@ -70,12 +70,12 @@ export function Button({ children, variant = 'primary', size = 'md', isLoading, 
 }
 
 /* ─── Badge ─── */
-interface BadgeProps {
+interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode;
   color?: 'primary' | 'success' | 'warning' | 'danger' | 'info';
 }
-export function Badge({ children, color = 'primary' }: BadgeProps) {
-  return <span className={`${styles.badge} ${styles[`badge-${color}`]}`}>{children}</span>;
+export function Badge({ children, color = 'primary', className = '', ...props }: BadgeProps) {
+  return <span className={`${styles.badge} ${styles[`badge-${color}`]} ${className}`} {...props}>{children}</span>;
 }
 
 /* ─── Input ─── */
