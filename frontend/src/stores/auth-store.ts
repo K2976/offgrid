@@ -1,15 +1,14 @@
 import { create } from 'zustand';
-import api from '@/lib/api';
-import type { AuthResponse, LoginRequest, RegisterRequest, UserProfile } from '@/types';
+import type { UserRole } from '@/types';
 
 interface AuthState {
-  user: { id: string; email: string; name: string } | null;
+  user: { id: string; email: string; name: string; role: UserRole } | null;
   onboardingComplete: boolean;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
-  fetchMe: () => Promise<UserProfile | null>;
+  login: (email: string, password: string, role: UserRole) => Promise<void>;
+  registerCompany: (name: string, email: string, password: string) => Promise<void>;
+  registerFreelancer: (name: string, email: string, password: string, skills: string[], experienceLevel: string) => Promise<void>;
   logout: () => void;
   hydrate: () => void;
 }
@@ -20,68 +19,58 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   isLoading: true,
 
-  login: async (data) => {
-    const res = await api.post<AuthResponse>('/auth/login', data);
-    localStorage.setItem('access_token', res.data.access_token);
-    localStorage.setItem('refresh_token', res.data.refresh_token);
+  login: async (email, password, role) => {
+    // Mock login — simulate API delay
+    await new Promise((r) => setTimeout(r, 800));
+    const mockUser = {
+      id: 'usr_' + Math.random().toString(36).slice(2, 10),
+      email,
+      name: email.split('@')[0].replace(/[^a-zA-Z]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      role,
+    };
+    localStorage.setItem('og_user', JSON.stringify(mockUser));
+    localStorage.setItem('og_onboarding', role === 'freelancer' ? 'true' : 'false');
     set({
-      user: { id: res.data.id, email: res.data.email, name: res.data.name },
-      isAuthenticated: true,
-    });
-
-    const profile = await api.get<UserProfile>('/auth/me');
-    set({ onboardingComplete: profile.data.onboarding_complete });
-  },
-
-  register: async (data) => {
-    const res = await api.post<AuthResponse>('/auth/register', data);
-    localStorage.setItem('access_token', res.data.access_token);
-    localStorage.setItem('refresh_token', res.data.refresh_token);
-    set({
-      user: { id: res.data.id, email: res.data.email, name: res.data.name },
-      onboardingComplete: false,
+      user: mockUser,
+      onboardingComplete: role === 'freelancer',
       isAuthenticated: true,
     });
   },
 
-  fetchMe: async () => {
-    try {
-      const res = await api.get<UserProfile>('/auth/me');
-      set({
-        user: { id: res.data.id, email: res.data.email, name: res.data.name },
-        onboardingComplete: res.data.onboarding_complete,
-        isAuthenticated: true,
-      });
-      return res.data;
-    } catch {
-      return null;
-    }
+  registerCompany: async (name, email, password) => {
+    await new Promise((r) => setTimeout(r, 800));
+    const mockUser = { id: 'usr_' + Math.random().toString(36).slice(2, 10), email, name, role: 'company' as UserRole };
+    localStorage.setItem('og_user', JSON.stringify(mockUser));
+    localStorage.setItem('og_onboarding', 'false');
+    set({ user: mockUser, onboardingComplete: false, isAuthenticated: true });
+  },
+
+  registerFreelancer: async (name, email, password, skills, experienceLevel) => {
+    await new Promise((r) => setTimeout(r, 800));
+    const mockUser = { id: 'usr_' + Math.random().toString(36).slice(2, 10), email, name, role: 'freelancer' as UserRole };
+    localStorage.setItem('og_user', JSON.stringify(mockUser));
+    localStorage.setItem('og_onboarding', 'true');
+    set({ user: mockUser, onboardingComplete: true, isAuthenticated: true });
   },
 
   logout: () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('og_user');
+    localStorage.removeItem('og_onboarding');
     set({ user: null, onboardingComplete: false, isAuthenticated: false });
     window.location.href = '/login';
   },
 
-  hydrate: async () => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      try {
-        const res = await api.get<UserProfile>('/auth/me');
-        set({
-          user: { id: res.data.id, email: res.data.email, name: res.data.name },
-          onboardingComplete: res.data.onboarding_complete,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-      } catch {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        set({ user: null, onboardingComplete: false, isAuthenticated: false, isLoading: false });
+  hydrate: () => {
+    try {
+      const raw = localStorage.getItem('og_user');
+      if (raw) {
+        const user = JSON.parse(raw);
+        const onboarding = localStorage.getItem('og_onboarding') === 'true';
+        set({ user, onboardingComplete: onboarding, isAuthenticated: true, isLoading: false });
+      } else {
+        set({ isLoading: false });
       }
-    } else {
+    } catch {
       set({ isLoading: false });
     }
   },

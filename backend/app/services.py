@@ -525,6 +525,16 @@ def _ga4_traffic_for_site(website_url: str) -> tuple[dict | None, str | None]:
                 limit=30,
             )
         )
+
+        countries_resp = client.run_report(
+            RunReportRequest(
+                property=f"properties/{property_id}",
+                date_ranges=common_ranges,
+                dimensions=[Dimension(name="country")],
+                metrics=[Metric(name="sessions"), Metric(name="totalUsers")],
+                limit=10,
+            )
+        )
     except Exception as exc:
         return None, f"Unable to fetch Google Analytics data: {str(exc)}"
 
@@ -585,6 +595,15 @@ def _ga4_traffic_for_site(website_url: str) -> tuple[dict | None, str | None]:
         for row in daily_resp.rows
     ]
 
+    countries = [
+        {
+            "country": row.dimension_values[0].value,
+            "sessions": int(float(row.metric_values[0].value)),
+            "users": int(float(row.metric_values[1].value)),
+        }
+        for row in countries_resp.rows
+    ]
+
     return {
         "source": "ga4",
         "property_id": property_id,
@@ -593,6 +612,7 @@ def _ga4_traffic_for_site(website_url: str) -> tuple[dict | None, str | None]:
         "channels": channels,
         "top_pages": top_pages,
         "daily": daily,
+        "countries": countries,
     }, None
 
 

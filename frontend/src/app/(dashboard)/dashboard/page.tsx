@@ -1,465 +1,234 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
-  Globe,
-  Zap,
-  Activity,
-  Download,
-  TrendingUp,
-  TrendingDown,
-  Gauge,
-  Clock,
-  MousePointerClick,
-  LayoutGrid,
-  ArrowRight,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  Search,
-  BarChart3,
-  Sparkles,
+  TrendingUp, TrendingDown, Eye, MousePointerClick, BarChart3, Megaphone,
+  Sparkles, ArrowRight, Clock, Zap, ChevronRight
 } from 'lucide-react';
-import { Card, Button, Badge, StatCard, Input } from '@/components/ui/ui-components';
-import { useAuthStore } from '@/stores/auth-store';
-import { useAnalyticsStore } from '@/stores/analytics-store';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar
 } from 'recharts';
-import Link from 'next/link';
-import styles from '../dashboard.module.css';
+import { Header } from '@/components/layout/Header';
 
-function ScoreRing({ score, label, size = 80 }: { score: number; label: string; size?: number }) {
-  const radius = (size - 12) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-  const color = score >= 90 ? '#2ba640' : score >= 50 ? '#fbc02d' : '#ff4e45';
+const stats = [
+  { label: 'Engagement', value: '12.8K', change: '+14.2%', trend: 'up', icon: TrendingUp, color: 'text-emerald-400' },
+  { label: 'Total Visits', value: '48.2K', change: '+8.7%', trend: 'up', icon: Eye, color: 'text-blue-400' },
+  { label: 'Conversions', value: '3,420', change: '+2.4%', trend: 'up', icon: MousePointerClick, color: 'text-violet-400' },
+  { label: 'Active Campaigns', value: '7', change: '+2', trend: 'up', icon: Megaphone, color: 'text-amber-400' },
+];
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={6} />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={6}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          style={{ transition: 'stroke-dashoffset 1s ease' }}
-        />
-        <text x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="central" style={{ fill: '#f1f1f1', fontSize: size * 0.25, fontWeight: 700 }}>
-          {score}
-        </text>
-      </svg>
-      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', textAlign: 'center' }}>{label}</span>
-    </div>
-  );
-}
+const trafficData = [
+  { name: 'Mon', organic: 4200, paid: 2800, engagement: 320 },
+  { name: 'Tue', organic: 3800, paid: 2200, engagement: 280 },
+  { name: 'Wed', organic: 5100, paid: 3400, engagement: 450 },
+  { name: 'Thu', organic: 4700, paid: 3100, engagement: 390 },
+  { name: 'Fri', organic: 5800, paid: 4200, engagement: 520 },
+  { name: 'Sat', organic: 4300, paid: 2900, engagement: 350 },
+  { name: 'Sun', organic: 4900, paid: 3600, engagement: 420 },
+];
 
-function CWVItem({ label, value, good }: { label: string; value: string | undefined; good?: boolean }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-      <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>{label}</span>
-      <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: good === false ? 'var(--color-warning)' : 'var(--text-primary)' }}>
-        {value || '—'}
-      </span>
-    </div>
-  );
-}
+const engagementData = [
+  { name: 'Mon', likes: 820, shares: 230, comments: 145 },
+  { name: 'Tue', likes: 690, shares: 180, comments: 120 },
+  { name: 'Wed', likes: 1050, shares: 340, comments: 210 },
+  { name: 'Thu', likes: 880, shares: 260, comments: 175 },
+  { name: 'Fri', likes: 1200, shares: 410, comments: 280 },
+  { name: 'Sat', likes: 750, shares: 200, comments: 130 },
+  { name: 'Sun', likes: 960, shares: 320, comments: 195 },
+];
 
-export default function Dashboard() {
-  const fetchMe = useAuthStore((s) => s.fetchMe);
-  const user = useAuthStore((s) => s.user);
-  const { websiteAudit, fetchWebsiteAudit, isLoading: auditLoading, error: auditError } = useAnalyticsStore();
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [hasUrl, setHasUrl] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
+const aiInsights = [
+  { title: 'Reels performing 2x better', desc: 'Short-form video content is generating 2x more engagement than static posts this week.', type: 'opportunity' },
+  { title: 'Instagram reach declining', desc: 'Your Instagram reach dropped 18% — consider boosting top posts or changing posting schedule.', type: 'problem' },
+  { title: 'SEO keyword opportunity', desc: '"AI marketing tool" moved to position #8. With minor optimization, you can hit top 5.', type: 'trend' },
+];
 
-  useEffect(() => {
-    const init = async () => {
-      const profile = await fetchMe();
-      if (profile?.website_url) {
-        setWebsiteUrl(profile.website_url);
-        setHasUrl(true);
-        // Auto-run audit on load if user has a saved website
-        await fetchWebsiteAudit(profile.website_url, 'mobile');
-      }
-      setInitialLoad(false);
-    };
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+const suggestedActions = [
+  { action: 'Post at 8 PM for max engagement', reasoning: 'Your audience is 40% more active between 7-9 PM', priority: 'high' },
+  { action: 'Increase Reels budget by 15%', reasoning: 'ROI on Reels is 2.3x higher than static posts', priority: 'high' },
+  { action: 'A/B test email subject lines', reasoning: 'Open rates dropped 5% — test shorter subjects', priority: 'medium' },
+  { action: 'Respond to 12 comments', reasoning: 'Engagement replies boost algorithm ranking', priority: 'low' },
+];
 
-  const runQuickAudit = async () => {
-    if (!websiteUrl.trim()) return;
-    await fetchWebsiteAudit(websiteUrl.trim(), 'mobile');
-  };
+const recentActivity = [
+  { action: 'Campaign "Summer Boost" went live', timestamp: '2 hours ago', type: 'campaign' },
+  { action: 'AI generated 5 new post ideas', timestamp: '4 hours ago', type: 'content' },
+  { action: 'Analytics report ready for download', timestamp: '6 hours ago', type: 'analytics' },
+  { action: 'New freelancer application received', timestamp: '1 day ago', type: 'system' },
+];
 
-  const auditData = websiteAudit;
-  const hasAudit = !!auditData;
-
-  // Build mini chart from daily traffic if available
-  const dailyData = auditData?.traffic?.daily?.map((d) => ({
-    name: d.date.slice(-2),
-    sessions: d.sessions,
-    users: d.users,
-  })) || [];
-
+export default function DashboardPage() {
   return (
     <div>
-      {/* Page Header */}
-      <div className={styles.pageHeader}>
-        <div>
-          <h1 className={styles.pageTitle} style={{ fontSize: '24px', fontWeight: 600 }}>
-            Channel dashboard
-          </h1>
-          {user && (
-            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginTop: 2 }}>
-              Welcome back, {user.name}
-            </p>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-          <Button variant="ghost" size="sm" style={{ border: '1px solid var(--border-default)', borderRadius: '50%', width: 40, height: 40, padding: 0 }}>
-            <Activity size={18} />
-          </Button>
-          <Button variant="ghost" size="sm" style={{ border: '1px solid var(--border-default)', borderRadius: '50%', width: 40, height: 40, padding: 0 }}>
-            <Download size={18} />
-          </Button>
-        </div>
-      </div>
+      <Header title="Dashboard" subtitle="Your marketing command center" />
 
-      {/* Website URL Setup Banner (if no URL set) */}
-      {!hasUrl && !initialLoad && (
-        <Card style={{ padding: 'var(--spacing-lg)', marginBottom: 'var(--spacing-lg)', border: '1px solid var(--color-primary)', background: 'rgba(62,166,255,0.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 'var(--spacing-md)' }}>
-            <Globe size={24} color="var(--color-primary)" />
-            <div>
-              <h3 style={{ fontWeight: 600, fontSize: 'var(--font-size-md)' }}>Set up your website analytics</h3>
-              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-                Enter your website URL below to see PageSpeed scores, Core Web Vitals, and performance data.
-              </p>
+      <div className="mt-6 space-y-6 px-8 pb-8">
+        {/* Stat Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-surface-100 p-5 transition-all hover:border-white/[0.12] hover:shadow-lg"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-500">{stat.label}</span>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </div>
+              <div className="mt-2 text-3xl font-bold text-white">{stat.value}</div>
+              <div className="mt-1 flex items-center gap-1 text-sm">
+                <TrendingUp className="h-3 w-3 text-emerald-400" />
+                <span className="text-emerald-400">{stat.change}</span>
+                <span className="text-zinc-600">vs last week</span>
+              </div>
+              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br from-brand-500/5 to-transparent transition-all group-hover:from-brand-500/10" />
             </div>
+          ))}
+        </div>
+
+        {/* AI Insights */}
+        <div className="ai-card animate-pulse-glow rounded-xl p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-violet-400" />
+            <h2 className="text-lg font-semibold text-white">AI Insights</h2>
+            <Badge className="ml-2 bg-violet-500/20 text-violet-300 border-violet-500/30">Live</Badge>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}>
-              <Input
-                placeholder="https://yourwebsite.com"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-              />
+          <div className="grid gap-3 md:grid-cols-3">
+            {aiInsights.map((insight, i) => (
+              <div key={i} className="rounded-lg border border-white/[0.06] bg-surface-0/50 p-4 transition-all hover:border-white/[0.12]">
+                <div className="mb-1 flex items-center gap-2">
+                  <div className={`h-2 w-2 rounded-full ${
+                    insight.type === 'opportunity' ? 'bg-emerald-400' :
+                    insight.type === 'problem' ? 'bg-rose-400' : 'bg-amber-400'
+                  }`} />
+                  <span className="text-sm font-semibold text-zinc-200">{insight.title}</span>
+                </div>
+                <p className="text-xs leading-relaxed text-zinc-500">{insight.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Suggested Actions */}
+        <Card className="border-white/[0.06] bg-surface-100">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Zap className="h-5 w-5 text-amber-400" />
+              Suggested Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {suggestedActions.map((action, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg border border-white/[0.04] bg-white/[0.02] p-3 transition-all hover:bg-white/[0.04]">
+                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    action.priority === 'high' ? 'bg-rose-500/20 text-rose-400' :
+                    action.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                    'bg-blue-500/20 text-blue-400'
+                  }`}>
+                    {i + 1}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-zinc-200">{action.action}</p>
+                    <p className="text-xs text-zinc-500">{action.reasoning}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-zinc-600" />
+                </div>
+              ))}
             </div>
-            <Button onClick={runQuickAudit} isLoading={auditLoading} style={{ height: 44 }}>
-              Analyze
-            </Button>
-          </div>
+          </CardContent>
         </Card>
-      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(350px, 1fr) minmax(350px, 1.2fr)', gap: 'var(--spacing-lg)' }}>
+        {/* Charts */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="border-white/[0.06] bg-surface-100">
+            <CardHeader>
+              <CardTitle className="text-white">Traffic Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trafficData}>
+                    <defs>
+                      <linearGradient id="colorOrg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorPaid" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} />
+                    <Tooltip contentStyle={{ background: '#1f1f23', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: '#fafafa', fontSize: 13 }} />
+                    <Area type="monotone" dataKey="organic" stroke="#3b82f6" fillOpacity={1} fill="url(#colorOrg)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="paid" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorPaid)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-3 flex items-center gap-4 text-xs text-zinc-500">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" /> Organic</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-violet-500" /> Paid</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* LEFT COLUMN */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+          <Card className="border-white/[0.06] bg-surface-100">
+            <CardHeader>
+              <CardTitle className="text-white">Engagement</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={engagementData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} />
+                    <Tooltip contentStyle={{ background: '#1f1f23', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: '#fafafa', fontSize: 13 }} />
+                    <Bar dataKey="likes" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="shares" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="comments" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-3 flex items-center gap-4 text-xs text-zinc-500">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" /> Likes</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-violet-500" /> Shares</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Comments</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* PageSpeed Scores */}
-          <Card style={{ padding: 'var(--spacing-lg)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
-              <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600 }}>
-                <Gauge size={16} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
-                Website Performance
-              </h2>
-              {hasUrl && (
-                <Button variant="ghost" size="sm" onClick={runQuickAudit} isLoading={auditLoading} style={{ fontSize: 'var(--font-size-xs)' }}>
-                  Refresh
-                </Button>
-              )}
+        {/* Recent Activity */}
+        <Card className="border-white/[0.06] bg-surface-100">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Clock className="h-5 w-5 text-zinc-500" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentActivity.map((item, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-white/[0.02]">
+                  <div className={`h-2 w-2 rounded-full ${
+                    item.type === 'campaign' ? 'bg-blue-400' :
+                    item.type === 'content' ? 'bg-violet-400' :
+                    item.type === 'analytics' ? 'bg-emerald-400' : 'bg-zinc-500'
+                  }`} />
+                  <span className="flex-1 text-sm text-zinc-300">{item.action}</span>
+                  <span className="text-xs text-zinc-600">{item.timestamp}</span>
+                </div>
+              ))}
             </div>
-
-            {auditLoading && !hasAudit && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--spacing-2xl)', color: 'var(--text-secondary)', gap: 8 }}>
-                <Loader2 size={20} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
-                Analyzing website...
-              </div>
-            )}
-
-            {auditError && !hasAudit && (
-              <div style={{ padding: 'var(--spacing-lg)', textAlign: 'center', color: 'var(--color-warning)' }}>
-                <AlertCircle size={20} style={{ marginBottom: 8 }} />
-                <p style={{ fontSize: 'var(--font-size-sm)' }}>{auditError}</p>
-              </div>
-            )}
-
-            {hasAudit && (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: 'var(--spacing-lg)' }}>
-                  <ScoreRing score={auditData.scores.performance} label="Performance" />
-                  <ScoreRing score={auditData.scores.seo} label="SEO" />
-                  <ScoreRing score={auditData.scores.accessibility} label="Access." />
-                  <ScoreRing score={auditData.scores.best_practices} label="Best Prac." />
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 'var(--spacing-md)' }}>
-                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                    {auditData.site_profile.hostname} · {auditData.strategy} · {auditData.fetched_at?.slice(0, 10)}
-                  </p>
-                </div>
-              </>
-            )}
-
-            {!hasAudit && !auditLoading && !auditError && hasUrl && (
-              <div style={{ textAlign: 'center', padding: 'var(--spacing-xl)', color: 'var(--text-secondary)' }}>
-                <Globe size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
-                <p style={{ fontSize: 'var(--font-size-sm)' }}>Click Refresh to run a PageSpeed audit</p>
-              </div>
-            )}
-          </Card>
-
-          {/* Core Web Vitals */}
-          {hasAudit && auditData.core_web_vitals && (
-            <Card style={{ padding: 'var(--spacing-lg)' }}>
-              <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
-                <Activity size={16} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
-                Core Web Vitals
-              </h2>
-              <CWVItem label="First Contentful Paint" value={auditData.core_web_vitals.fcp} />
-              <CWVItem label="Largest Contentful Paint" value={auditData.core_web_vitals.lcp} />
-              <CWVItem label="Total Blocking Time" value={auditData.core_web_vitals.tbt} />
-              <CWVItem label="Cumulative Layout Shift" value={auditData.core_web_vitals.cls} />
-              <CWVItem label="Speed Index" value={auditData.core_web_vitals.speed_index} />
-              <CWVItem label="Time to Interactive" value={auditData.core_web_vitals.tti} />
-            </Card>
-          )}
-
-          {/* Top Opportunities */}
-          {hasAudit && auditData.opportunities && auditData.opportunities.length > 0 && (
-            <Card style={{ padding: 'var(--spacing-lg)' }}>
-              <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
-                <Sparkles size={16} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
-                Top Opportunities
-              </h2>
-              {auditData.opportunities.slice(0, 5).map((opp) => (
-                <div key={opp.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <p style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500 }}>{opp.title}</p>
-                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 2 }}>{opp.impact || 'Potential impact available'}</p>
-                </div>
-              ))}
-            </Card>
-          )}
-
-          {/* Quick Actions */}
-          {!hasAudit && !auditLoading && (
-            <Card style={{ padding: 'var(--spacing-lg)' }}>
-              <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>Quick Actions</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-                <Link href="/dashboard/analytics" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px', background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                  <BarChart3 size={16} color="var(--color-primary)" /> Run Website Audit <ArrowRight size={14} style={{ marginLeft: 'auto', color: 'var(--text-tertiary)' }} />
-                </Link>
-                <Link href="/dashboard/competitors" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px', background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                  <Search size={16} color="var(--color-primary)" /> Analyze Competitors <ArrowRight size={14} style={{ marginLeft: 'auto', color: 'var(--text-tertiary)' }} />
-                </Link>
-                <Link href="/dashboard/settings" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px', background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                  <Globe size={16} color="var(--color-primary)" /> Configure Website URL <ArrowRight size={14} style={{ marginLeft: 'auto', color: 'var(--text-tertiary)' }} />
-                </Link>
-              </div>
-            </Card>
-          )}
-        </div>
-
-        {/* RIGHT COLUMN */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-
-          {/* Channel Analytics / Traffic Overview */}
-          <Card style={{ padding: 'var(--spacing-lg)' }}>
-            <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: '24px' }}>Channel analytics</h2>
-
-            {hasAudit && auditData.traffic ? (
-              <>
-                {/* GA4 Traffic Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-                  <div>
-                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>Users (30d)</div>
-                    <div style={{ fontSize: '32px', fontWeight: 400, marginTop: 4 }}>{auditData.traffic.totals.users.toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>Sessions</div>
-                    <div style={{ fontSize: '32px', fontWeight: 400, marginTop: 4 }}>{auditData.traffic.totals.sessions.toLocaleString()}</div>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                  <h3 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Summary</h3>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>Last 30 days</div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                    <span>Page Views</span>
-                    <span style={{ fontWeight: 600 }}>{auditData.traffic.totals.page_views.toLocaleString()}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                    <span>Bounce Rate</span>
-                    <span style={{ fontWeight: 600 }}>{auditData.traffic.totals.bounce_rate}%</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                    <span>Engagement Rate</span>
-                    <span style={{ fontWeight: 600 }}>{auditData.traffic.totals.engagement_rate}%</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 'var(--font-size-sm)' }}>
-                    <span>Conversions</span>
-                    <span style={{ fontWeight: 600 }}>{auditData.traffic.totals.conversions}</span>
-                  </div>
-                </div>
-
-                {/* Daily Traffic Chart */}
-                {dailyData.length > 0 && (
-                  <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-                    <h3 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Daily Traffic</h3>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Sessions · Last 30 days</div>
-                    <div style={{ height: 120, width: '100%' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={dailyData}>
-                          <defs>
-                            <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-tertiary)', fontSize: 11 }} />
-                          <Tooltip contentStyle={{ background: 'var(--bg-surface-raised)', border: 'none', borderRadius: 4, color: '#fff' }} />
-                          <Area type="monotone" dataKey="sessions" stroke="var(--color-primary)" fillOpacity={1} fill="url(#colorSessions)" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                )}
-
-                <Button variant="secondary" size="md" style={{ borderRadius: 20, width: 'max-content' }}>
-                  <Link href="/dashboard/analytics" style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    GO TO FULL ANALYTICS
-                  </Link>
-                </Button>
-              </>
-            ) : hasAudit ? (
-              <>
-                {/* No GA4 — show PageSpeed-based site info */}
-                <div style={{ marginBottom: 'var(--spacing-lg)', borderBottom: '1px solid var(--border-default)', paddingBottom: '24px' }}>
-                  <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>Website</div>
-                  <div style={{ fontSize: '20px', fontWeight: 500, marginTop: '4px' }}>{auditData.site_profile.hostname}</div>
-                  <div style={{ fontSize: 'var(--font-size-xs)', color: auditData.site_profile.google_analytics_connected ? 'var(--color-success)' : 'var(--color-warning)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {auditData.site_profile.google_analytics_connected ? (
-                      <><CheckCircle2 size={12} /> Google Analytics connected</>
-                    ) : (
-                      <><AlertCircle size={12} /> {auditData.site_profile.google_analytics_note || 'GA4 not configured'}</>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                  <h3 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Performance Summary</h3>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>From PageSpeed Insights</div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                    <span>Performance Score</span>
-                    <span style={{ fontWeight: 600 }}>{auditData.scores.performance}/100</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                    <span>SEO Score</span>
-                    <span style={{ fontWeight: 600 }}>{auditData.scores.seo}/100</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                    <span>Accessibility</span>
-                    <span style={{ fontWeight: 600 }}>{auditData.scores.accessibility}/100</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 'var(--font-size-sm)' }}>
-                    <span>Best Practices</span>
-                    <span style={{ fontWeight: 600 }}>{auditData.scores.best_practices}/100</span>
-                  </div>
-                </div>
-
-                <Button variant="secondary" size="md" style={{ borderRadius: 20, width: 'max-content' }}>
-                  <Link href="/dashboard/analytics" style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    GO TO FULL ANALYTICS
-                  </Link>
-                </Button>
-              </>
-            ) : (
-              <>
-                <div style={{ marginBottom: '24px', borderBottom: '1px solid var(--border-default)', paddingBottom: '24px' }}>
-                  <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>Website analytics</div>
-                  <div style={{ fontSize: '48px', fontWeight: 400, marginTop: '8px', color: 'var(--text-tertiary)' }}>—</div>
-                </div>
-
-                <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                  <h3 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Summary</h3>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>No data yet</div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                    <span>Performance</span>
-                    <span style={{ color: 'var(--text-tertiary)' }}>—</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                    <span>SEO</span>
-                    <span style={{ color: 'var(--text-tertiary)' }}>—</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 'var(--font-size-sm)' }}>
-                    <span>Accessibility</span>
-                    <span style={{ color: 'var(--text-tertiary)' }}>—</span>
-                  </div>
-                </div>
-
-                <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBottom: 'var(--spacing-md)' }}>
-                  {hasUrl ? 'Loading analytics...' : 'Set your website URL in Settings to see real data here.'}
-                </p>
-
-                <Button variant="secondary" size="md" style={{ borderRadius: 20, width: 'max-content' }}>
-                  <Link href="/dashboard/settings" style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    CONFIGURE WEBSITE
-                  </Link>
-                </Button>
-              </>
-            )}
-          </Card>
-
-          {/* API Coverage */}
-          {hasAudit && auditData.api_coverage && (
-            <Card style={{ padding: 'var(--spacing-lg)' }}>
-              <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>API Coverage</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-xs)' }}>
-                {Object.entries(auditData.api_coverage).map(([apiName, active]) => (
-                  <div key={apiName} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--font-size-xs)' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>{apiName.replace(/_/g, ' ')}</span>
-                    <span style={{ color: active ? 'var(--color-success)' : 'var(--text-tertiary)', fontWeight: 500 }}>
-                      {active ? '● active' : '○'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Diagnostics */}
-          {hasAudit && auditData.diagnostics && auditData.diagnostics.length > 0 && (
-            <Card style={{ padding: 'var(--spacing-lg)' }}>
-              <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>Diagnostics</h2>
-              {auditData.diagnostics.slice(0, 6).map((diag) => (
-                <div key={diag.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                  <span>{diag.title}</span>
-                  <span style={{ color: (diag.score ?? 0) < 50 ? 'var(--color-danger)' : 'var(--color-warning)', fontWeight: 600 }}>{diag.score ?? '-'}/100</span>
-                </div>
-              ))}
-            </Card>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

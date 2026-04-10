@@ -1,7 +1,8 @@
 import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
-  return clsx(inputs);
+  return twMerge(clsx(inputs));
 }
 
 export function formatNumber(num: number): string {
@@ -12,6 +13,10 @@ export function formatNumber(num: number): string {
 
 export function formatPercent(num: number): string {
   return `${num >= 0 ? '+' : ''}${num.toFixed(1)}%`;
+}
+
+export function formatCurrency(num: number): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(num);
 }
 
 export function formatDate(dateStr: string): string {
@@ -29,28 +34,4 @@ export function formatDateTime(dateStr: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-export function trendIcon(trend: 'rising' | 'stable' | 'declining'): string {
-  const map = { rising: '↑', stable: '→', declining: '↓' };
-  return map[trend] || '→';
-}
-
-export function severityColor(severity: string): string {
-  const map: Record<string, string> = {
-    critical: 'var(--color-danger)',
-    high: '#E17055',
-    medium: 'var(--color-warning)',
-    low: 'var(--color-info)',
-  };
-  return map[severity] || 'var(--text-secondary)';
-}
-
-export function priorityColor(priority: string): string {
-  const map: Record<string, string> = {
-    high: 'var(--color-danger)',
-    medium: 'var(--color-warning)',
-    low: 'var(--color-success)',
-  };
-  return map[priority] || 'var(--text-secondary)';
 }

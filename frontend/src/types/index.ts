@@ -1,24 +1,39 @@
 /* ============================================
-   TypeScript Interfaces — API Response Schemas
+   TypeScript Interfaces — OffGrid AI Marketing Copilot
    ============================================ */
+
+// --- User Roles ---
+export type UserRole = 'company' | 'freelancer';
+export type BusinessType = 'product' | 'service' | 'event';
 
 // --- Auth ---
 export interface LoginRequest {
   email: string;
   password: string;
+  role: UserRole;
 }
 
 export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
+  role: UserRole;
   company_name?: string;
+}
+
+export interface FreelancerRegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  skills: string[];
+  experienceLevel: 'beginner' | 'intermediate' | 'expert';
 }
 
 export interface AuthResponse {
   id: string;
   email: string;
   name: string;
+  role: UserRole;
   access_token: string;
   refresh_token: string;
 }
@@ -27,343 +42,164 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
+  role: UserRole;
   company_name?: string;
-  website_url?: string;
   onboarding_complete: boolean;
+  avatar?: string;
 }
 
-export interface OnboardingRequest {
-  workspace_name: string;
-  mode: 'general' | 'custom';
-  goals: string[];
-  budget_monthly?: number;
-  autopilot_enabled: boolean;
-  autopilot_time: string;
-  company_name?: string;
+// --- Onboarding ---
+export interface ProductInfo {
+  productName: string;
+  category: string;
+  targetAudience: string;
+  priceRange: string;
+  usp: string;
 }
 
-export interface TokenResponse {
-  access_token: string;
-  refresh_token?: string;
+export interface ServiceInfo {
+  serviceType: string;
+  targetAudience: string;
+  location: string;
+  pricingModel: string;
+  keyBenefits: string;
+}
+
+export interface EventInfo {
+  eventName: string;
+  eventType: string;
+  location: string;
+  date: string;
+  targetAudience: string;
+}
+
+export interface MarketingPreferences {
+  budgetRange: string;
+  platforms: string[];
+  goal: 'awareness' | 'sales' | 'engagement';
+}
+
+export interface OnboardingData {
+  businessType: BusinessType;
+  businessInfo: ProductInfo | ServiceInfo | EventInfo;
+  marketingPreferences: MarketingPreferences;
+}
+
+// --- Campaigns ---
+export interface Campaign {
+  id: string;
+  name: string;
+  platform: string;
+  budget: number;
+  status: 'active' | 'paused' | 'completed' | 'draft';
+  performance: number;
+  goal: string;
+  startDate: string;
+  endDate: string;
+}
+
+// --- Content AI ---
+export interface GeneratedContent {
+  id: string;
+  post: string;
+  caption: string;
+  hashtags: string[];
+  bestTimeToPost: string;
+  platform: string;
+}
+
+export interface ContentGenerateRequest {
+  businessType: string;
+  audience: string;
+  platform: string;
+  tone: string;
 }
 
 // --- Analytics ---
-export interface AnalyticsOverview {
-  period: string;
-  social: {
-    total_followers: number;
-    follower_growth: number;
-    avg_engagement_rate: number;
-    total_reach: number;
-    total_impressions: number;
-  };
-  website: {
-    total_visits: number;
-    bounce_rate: number;
-    avg_session_duration: number;
-    conversions: number;
-    conversion_rate: number;
-  };
-  seo: {
-    avg_position: number;
-    top_keywords_count: number;
-    position_change: number;
-  };
-  trends: {
-    engagement_trend: 'rising' | 'stable' | 'declining';
-    traffic_trend: 'rising' | 'stable' | 'declining';
-    seo_trend: 'rising' | 'stable' | 'declining';
-  };
+export interface AnalyticsData {
+  traffic: { date: string; visits: number; organic: number; paid: number }[];
+  conversions: { date: string; conversions: number; rate: number }[];
+  engagement: { date: string; likes: number; shares: number; comments: number }[];
 }
 
-export interface PostSummary {
-  id: string;
-  content_preview: string;
-  engagement_score: number;
-  posted_at: string;
-}
-
-export interface SocialAnalytics {
-  platform: string;
-  period: string;
-  followers: { current: number; change: number; growth_pct: number };
-  engagement: { rate: number; likes: number; comments: number; shares: number };
-  reach: { total: number; avg_per_post: number };
-  top_posts: PostSummary[];
-  worst_posts: PostSummary[];
-  daily_data: { date: string; followers: number; engagement_rate: number }[];
-}
-
-export interface WebsiteAnalytics {
-  period: string;
-  traffic: { total_visits: number; unique_visitors: number; page_views: number };
-  bounce_rate: number;
-  conversions: { total: number; rate: number; top_pages: string[] };
-  sources: { source: string; visits: number; pct: number }[];
-  daily_data: { date: string; visits: number; bounce_rate: number }[];
-}
-
-export interface WebsiteAudit {
-  url: string;
-  strategy: 'mobile' | 'desktop';
-  site_profile: {
-    hostname: string;
-    google_analytics_connected: boolean;
-    google_analytics_note?: string | null;
-  };
-  scores: {
-    performance: number;
-    seo: number;
-    accessibility: number;
-    best_practices: number;
-  };
-  api_coverage?: Record<string, boolean>;
-  performance_details?: {
-    first_contentful_paint?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
-    largest_contentful_paint?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
-    total_blocking_time?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
-    cumulative_layout_shift?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
-    speed_index?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
-    time_to_interactive?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
-    server_response_time?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
-    interactive?: { title?: string; value?: string; numeric_value?: number | null; description?: string };
-  };
-  opportunities?: Array<{
-    id: string;
-    title?: string;
-    impact?: string;
-    numeric_impact?: number;
-    description?: string;
-  }>;
-  diagnostics?: Array<{
-    id: string;
-    title?: string;
-    score?: number;
-    value?: string;
-  }>;
-  traffic?: {
-    source: 'ga4';
-    property_id: string;
-    range: string;
-    totals: {
-      users: number;
-      new_users: number;
-      sessions: number;
-      page_views: number;
-      engaged_sessions: number;
-      avg_session_duration_seconds: number;
-      bounce_rate: number;
-      engagement_rate: number;
-      conversions: number;
-    };
-    channels: Array<{
-      channel: string;
-      sessions: number;
-      users: number;
-      conversions: number;
-    }>;
-    top_pages: Array<{
-      path: string;
-      views: number;
-      users: number;
-      engagement_seconds: number;
-      entrances: number;
-    }>;
-    daily: Array<{
-      date: string;
-      sessions: number;
-      users: number;
-      page_views: number;
-    }>;
-  } | null;
-  core_web_vitals: {
-    fcp?: string;
-    lcp?: string;
-    tbt?: string;
-    cls?: string;
-    speed_index?: string;
-    tti?: string;
-  };
-  fetched_at: string;
-}
-
-export interface SEOKeyword {
-  keyword: string;
-  position: number;
-  change: number;
-  impressions: number;
-  clicks: number;
-  ctr: number;
-}
-
-export interface SEOAnalytics {
-  period: string;
-  keywords: SEOKeyword[];
-  avg_position: number;
-  total_impressions: number;
-  total_clicks: number;
-}
-
-// --- AI ---
 export interface AIInsight {
   id: string;
   type: 'opportunity' | 'problem' | 'trend';
   title: string;
   description: string;
   confidence: number;
-  data_points: string[];
-  severity: 'critical' | 'high' | 'medium' | 'low';
+  impact: 'high' | 'medium' | 'low';
 }
 
-export interface AIAction {
-  id: string;
-  priority: 'high' | 'medium' | 'low';
-  action: string;
-  reasoning: string;
-  expected_impact: string;
-  category: string;
-}
-
-export interface AIContentIdea {
-  platform: string;
-  idea: string;
-  tone: string;
-  optimal_time: string;
-  expected_engagement: string;
-}
-
-export interface AIAnalysis {
-  generated_at: string;
-  insights: AIInsight[];
-  actions: AIAction[];
-  content_ideas: AIContentIdea[];
-}
-
-export interface AIAnalyzeRequest {
-  focus: 'all' | 'social' | 'website' | 'seo';
-  period: '7d' | '30d';
-  goals: string[];
-}
-
-// --- Competitors ---
-export interface Competitor {
+// --- Billboards ---
+export interface Billboard {
   id: string;
   name: string;
-  platforms: Record<string, string>;
-  auto_detected: boolean;
-  tracking_since: string;
+  lat: number;
+  lng: number;
+  areaType: string;
+  nearbyPlaces: string[];
+  aiScore: number;
+  recommendation: string;
+  monthlyRate: number;
+  size: string;
+  city: string;
 }
 
-export interface CompetitorMetrics {
-  posting_frequency: number;
-  avg_engagement_rate: number;
-  follower_growth: number;
-  content_types: Record<string, number>;
-}
-
-export interface CampaignDetected {
+// --- Audience / CRM ---
+export interface AudienceSegment {
+  id: string;
   name: string;
-  detected_at: string;
-  post_count: number;
-  avg_engagement: number;
-}
-
-export interface CompetitorAnalysis {
-  competitor: string;
-  period: string;
-  metrics: CompetitorMetrics;
-  campaigns_detected: CampaignDetected[];
-  why_winning: string;
-  counter_strategies: { strategy: string; reasoning: string; priority: string }[];
-  comeback_playbook?: { phase: string; focus: string; actions: string[] }[];
-  market_context_summary?: string;
-  detailed_brief?: string;
-  brief_model_used?: string;
-}
-
-export interface AddCompetitorRequest {
-  name: string;
-  platforms: Record<string, string>;
-}
-
-// --- Content ---
-export interface GenerateContentRequest {
-  platform: 'instagram' | 'linkedin';
-  type: 'caption' | 'post_idea' | 'campaign';
-  tone: 'professional' | 'genz' | 'luxury' | 'casual';
-  topic: string;
-  context?: string;
   count: number;
+  type: 'new' | 'returning' | 'inactive';
+  description: string;
 }
 
-export interface GeneratedContent {
-  id: string;
-  content: string;
-  hashtags: string[];
-  estimated_engagement: string;
-  platform_optimized: boolean;
-}
-
-// --- Alerts ---
-export interface Alert {
-  id: string;
-  type: 'engagement_drop' | 'spike' | 'competitor_activity' | 'custom_rule';
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  title: string;
-  message: string;
-  suggested_action: string;
-  created_at: string;
-  read: boolean;
-}
-
-export interface AlertRule {
+export interface AudienceContact {
   id: string;
   name: string;
-  condition: {
-    metric: string;
-    operator: string;
-    threshold: number;
-    period: string;
-  };
-  actions: string[];
-  enabled: boolean;
-  last_triggered_at?: string;
+  email: string;
+  segment: string;
+  lastActive: string;
+  totalSpend: number;
 }
 
-// --- Reports ---
-export interface Report {
+// --- Freelancers ---
+export interface Freelancer {
   id: string;
-  period: { start: string; end: string };
-  generated_at: string;
-  download_url: string;
-  summary: { total_reach: number; engagement_rate: number; top_insight: string };
+  name: string;
+  avatar: string;
+  skills: string[];
+  rating: number;
+  hourlyRate: number;
+  completedProjects: number;
+  availability: 'available' | 'busy' | 'unavailable';
+  earnings: number;
 }
 
-// --- Autopilot ---
-export interface AutopilotAction {
-  priority: number;
-  action: string;
-  reasoning: string;
-}
-
-export interface AutopilotBrief {
-  date: string;
-  top_actions: AutopilotAction[];
-  content_idea: { platform: string; idea: string; tone: string };
-  competitor_insight: { competitor: string; insight: string; counter_action: string };
+export interface FreelancerCampaign {
+  id: string;
+  campaignName: string;
+  client: string;
+  status: 'active' | 'completed' | 'pending';
+  referralLink: string;
+  conversions: number;
+  earnings: number;
 }
 
 // --- Settings ---
-export interface WorkspaceSettings {
-  mode: 'general' | 'custom';
-  goals: string[];
-  budget_monthly?: number;
-  notification_channels: { telegram_chat_id?: string; email?: string };
-}
-
 export interface Integration {
   platform: string;
-  status: 'active' | 'expired' | 'revoked' | 'disconnected';
-  platform_username?: string;
-  connected_at?: string;
+  status: 'active' | 'disconnected';
+  username?: string;
+  connectedAt?: string;
+  icon: string;
+}
+
+// --- Activity ---
+export interface Activity {
+  id: string;
+  action: string;
+  timestamp: string;
+  type: 'campaign' | 'content' | 'analytics' | 'system';
 }
