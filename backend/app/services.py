@@ -166,6 +166,167 @@ def _generate_ai_text(prompt: str) -> tuple[str | None, str]:
     return None, "fallback"
 
 
+def _call_groq_with_tokens(prompt: str, max_tokens: int) -> str | None:
+    if not settings.groq_api_key:
+        return None
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            response = client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a precise growth strategist. Respond with practical, specific analysis.",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    "temperature": 0.45,
+                    "max_tokens": max_tokens,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"].strip()
+    except Exception:
+        return None
+
+
+def _call_gemini_with_tokens(prompt: str, max_tokens: int) -> str | None:
+    if not settings.gemini_api_key:
+        return None
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            response = client.post(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+                params={"key": settings.gemini_api_key},
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.45},
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                return None
+            parts = candidates[0].get("content", {}).get("parts", [])
+            text_parts = [part.get("text", "") for part in parts if part.get("text")]
+            return "\n".join(text_parts).strip() or None
+    except Exception:
+        return None
+
+
+def _generate_ai_text_fast(prompt: str, max_tokens: int = 300) -> tuple[str | None, str]:
+    # Prefer Groq first for low-latency generation, then fallback to Gemini.
+    groq_text = _call_groq_with_tokens(prompt, max_tokens)
+    if groq_text:
+        return groq_text, "groq"
+
+    gemini_text = _call_gemini_with_tokens(prompt, max_tokens)
+    if gemini_text:
+        return gemini_text, "gemini"
+
+    return None, "fallback"
+
+
+def _fetch_market_context_from_wikipedia(company_name: str) -> str:
+    encoded_name = quote(company_name)
+    fallback_summary = ""
+
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            summary_resp = client.get(f"https://en.wikipedia.org/api/rest_v1/page/summary/{encoded_name}")
+            if summary_resp.status_code == 200:
+                summary_data = summary_resp.json()
+                fallback_summary = summary_data.get("extract", "")
+                if fallback_summary:
+                    return fallback_summary
+
+            search_resp = client.get(
+                "https://en.wikipedia.org/w/api.php",
+                params={
+                    "action": "query",
+                    "list": "search",
+                    "srsearch": company_name,
+                    "format": "json",
+                    "srlimit": 1,
+                },
+            )
+            if search_resp.status_code == 200:
+                search_data = search_resp.json()
+                results = search_data.get("query", {}).get("search", [])
+                if results:
+                    snippet = results[0].get("snippet", "")
+                    return snippet.replace("<span class=\"searchmatch\">", "").replace("</span>", "")
+    except Exception:
+        return ""
+
+    return fallback_summary
+
+
+def _fallback_competitor_brief(competitor_name: str, niche: str, context: str) -> str:
+    return (
+        f"{competitor_name} operates in the {niche} niche with a strategy that balances awareness, authority, "
+        "and conversion intent. The brand appears to prioritize discoverability through frequent publishing, "
+        "especially in formats that algorithms currently favor, such as short-form video and educational carousel-style content. "
+        "Their messaging usually combines a direct value proposition with proof signals, including concrete outcomes, customer examples, "
+        "or recognizable references that increase trust quickly. This gives them an advantage in first-touch interactions because audiences "
+        "can understand what they offer in seconds without needing additional context.\n\n"
+        "From a channel perspective, their approach likely emphasizes consistency over sporadic spikes. Competitors in this niche that grow faster "
+        "typically maintain a predictable content cadence, keep visual identity stable, and reinforce the same narrative pillars repeatedly. "
+        "That repetition compounds memory and improves click-through and engagement over time. They also tend to structure content in funnel layers: "
+        "top-of-funnel educational content to attract broad audiences, mid-funnel comparative or tactical posts to build consideration, and "
+        "bottom-funnel offers that reduce friction to conversion.\n\n"
+        "Their performance edge probably comes from three factors. First, sharper positioning: messages are framed around outcomes rather than features. "
+        "Second, stronger execution speed: campaigns are launched quickly and iterated using early engagement signals. Third, tighter audience feedback loops: "
+        "comments, saves, and click behavior are translated into new content themes every week. In many niches, this operational discipline outperforms "
+        "creative quality alone.\n\n"
+        f"Public market context indicates: {context[:400] if context else 'the category is competitive, with attention concentrated around credible, consistent educators and brands.'} "
+        "To outperform this competitor, your strategy should focus on differentiated angles, higher publishing discipline, and stronger conversion architecture. "
+        "Differentiation means choosing a clear stance or specialization that is easier to remember than a broad promise. Publishing discipline means shipping "
+        "a weekly format mix with consistent CTAs and measurable goals for each post. Conversion architecture means every high-performing post should connect "
+        "to a clear next step, such as lead capture, booking, trial, or offer page.\n\n"
+        "In practical terms, winning this niche requires compounding trust faster than your competitor. Build a repeatable content engine, instrument each stage "
+        "of the funnel, and aggressively iterate based on observed behavior. Over a 6- to 10-week cycle, this typically improves both engagement quality and "
+        "commercial outcomes, even in saturated categories."
+    )
+
+
+def _build_counter_strategies(niche: str) -> list[dict]:
+    return [
+        {
+            "strategy": f"Publish a niche authority series for {niche}",
+            "reasoning": "A recurring educational series builds category ownership and improves repeat audience retention.",
+            "priority": "high",
+        },
+        {
+            "strategy": "Increase short-form distribution cadence to 4-5 posts/week",
+            "reasoning": "Higher frequency improves algorithmic reach and creates more data for iterative optimization.",
+            "priority": "high",
+        },
+        {
+            "strategy": "Launch comparison content against common alternatives",
+            "reasoning": "Mid-funnel comparison assets convert interest into consideration and reduce decision uncertainty.",
+            "priority": "medium",
+        },
+        {
+            "strategy": "Pair each top-performing post with a direct conversion CTA",
+            "reasoning": "Connecting content engagement to a specific next action raises conversion efficiency.",
+            "priority": "medium",
+        },
+        {
+            "strategy": "Run weekly competitor-response experiments",
+            "reasoning": "Fast reaction loops help neutralize competitor campaign momentum before it compounds.",
+            "priority": "medium",
+        },
+    ]
+
+
 def refresh_access_token(db: Session, refresh_token: str) -> dict:
     payload = decode_token(refresh_token)
     if payload.get("type") != "refresh":
@@ -387,19 +548,25 @@ def competitor_analysis(db: Session, user: User, competitor_id: str) -> dict:
     if not competitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Competitor not found")
 
-    wiki_summary = ""
-    wiki_url = f"https://en.wikipedia.org/wiki/{quote(competitor.name.replace(' ', '_'))}"
-    try:
-        with httpx.Client(timeout=8.0) as client:
-            wiki_resp = client.get(
-                f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(competitor.name)}"
-            )
-            if wiki_resp.status_code == 200:
-                wiki_data = wiki_resp.json()
-                wiki_summary = wiki_data.get("extract", "")
-                wiki_url = wiki_data.get("content_urls", {}).get("desktop", {}).get("page", wiki_url)
-    except Exception:
-        wiki_summary = ""
+    niche = str(competitor.platforms.get("niche", "general market")).strip() or "general market"
+    market_context = _fetch_market_context_from_wikipedia(competitor.name)
+
+    brief_prompt = (
+        f"Write a detailed 500-word competitive brief for {competitor.name} in the {niche} niche. "
+        "Explain market positioning, content strategy, growth motions, likely funnel structure, strengths, weaknesses, and tactical opportunities to beat them. "
+        f"Use this market context when relevant: {market_context or 'No external context available.'}"
+    )
+    ai_brief, brief_model = _generate_ai_text_fast(brief_prompt, max_tokens=1100)
+    detailed_brief = ai_brief or _fallback_competitor_brief(competitor.name, niche, market_context)
+
+    if len(detailed_brief.split()) < 380:
+        detailed_brief = (
+            detailed_brief
+            + "\n\n"
+            + _fallback_competitor_brief(competitor.name, niche, market_context)
+        )
+
+    counter_strategies = _build_counter_strategies(niche)
 
     return {
         "competitor": competitor.name,
@@ -411,17 +578,11 @@ def competitor_analysis(db: Session, user: User, competitor_id: str) -> dict:
             "content_types": {"reels": 45, "carousels": 30, "static": 25},
         },
         "campaigns_detected": [],
-        "why_winning": "Higher short-form video frequency is driving better reach.",
-        "counter_strategies": [
-            {
-                "strategy": "Increase reel production to 4/week",
-                "reasoning": "Short-form content has higher distribution priority.",
-                "priority": "high",
-            }
-        ],
-        "wikipedia_summary": wiki_summary,
-        "wikipedia_url": wiki_url,
-        "external_sources": ["wikipedia"],
+        "why_winning": "They combine consistent publishing cadence, clear positioning, and stronger mid-funnel conversion content.",
+        "counter_strategies": counter_strategies,
+        "market_context_summary": market_context,
+        "detailed_brief": detailed_brief,
+        "brief_model_used": brief_model,
     }
 
 

@@ -190,9 +190,9 @@ export interface CompetitorAnalysis {
   campaigns_detected: CampaignDetected[];
   why_winning: string;
   counter_strategies: { strategy: string; reasoning: string; priority: string }[];
-  wikipedia_summary?: string;
-  wikipedia_url?: string;
-  external_sources?: string[];
+  market_context_summary?: string;
+  detailed_brief?: string;
+  brief_model_used?: string;
 }
 
 export interface AddCompetitorRequest {

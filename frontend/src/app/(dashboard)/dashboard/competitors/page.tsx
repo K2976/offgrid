@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Swords, Plus, Trash2, Eye, BarChart2, Activity, ExternalLink } from 'lucide-react';
+import { Swords, Plus, Trash2, Eye, BarChart2, Activity } from 'lucide-react';
 import { Card, Button, Badge, EmptyState } from '@/components/ui/ui-components';
 import { useCompetitorStore } from '@/stores/app-stores';
 import {
@@ -22,6 +22,7 @@ export default function CompetitorsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
   const [newHandle, setNewHandle] = useState('');
+  const [newNiche, setNewNiche] = useState('');
 
   useEffect(() => {
     fetchAll();
@@ -37,11 +38,15 @@ export default function CompetitorsPage() {
     if (!newName.trim()) {
       return;
     }
-    await add(newName.trim(), { instagram: newHandle.trim() });
+    await add(newName.trim(), {
+      instagram: newHandle.trim(),
+      niche: newNiche.trim(),
+    });
     await fetchAll();
     setShowAdd(false);
     setNewName('');
     setNewHandle('');
+    setNewNiche('');
   };
 
   const onSelect = async (id: string) => {
@@ -85,6 +90,15 @@ export default function CompetitorsPage() {
               <input 
                 value={newHandle} onChange={(e) => setNewHandle(e.target.value)} 
                 placeholder="@handle" 
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-strong)', outline: 'none', background: '#fff' }}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: '220px' }}>
+              <label style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Niche</label>
+              <input
+                value={newNiche}
+                onChange={(e) => setNewNiche(e.target.value)}
+                placeholder="e.g. ecommerce tools"
                 style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-strong)', outline: 'none', background: '#fff' }}
               />
             </div>
@@ -196,21 +210,26 @@ export default function CompetitorsPage() {
                 </div>
               </div>
 
-              {!!selectedAnalysis.wikipedia_summary && (
+              {!!selectedAnalysis.market_context_summary && (
                 <div style={{ background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', border: '1px solid var(--border-default)' }}>
-                  <h4 style={{ marginBottom: 8, fontSize: 'var(--font-size-md)', fontWeight: 600 }}>Public context source</h4>
+                  <h4 style={{ marginBottom: 8, fontSize: 'var(--font-size-md)', fontWeight: 600 }}>Market context snapshot</h4>
                   <p style={{ marginBottom: 8, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                    {selectedAnalysis.wikipedia_summary}
+                    {selectedAnalysis.market_context_summary}
                   </p>
-                  <a href={selectedAnalysis.wikipedia_url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)' }}>
-                    View on Wikipedia <ExternalLink size={14} />
-                  </a>
                 </div>
               )}
 
-              <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-xs)' }}>
-                Analysis may use public information sources, including Wikipedia.
-              </p>
+              {!!selectedAnalysis.detailed_brief && (
+                <div style={{ background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', border: '1px solid var(--border-default)' }}>
+                  <h4 style={{ marginBottom: 8, fontSize: 'var(--font-size-md)', fontWeight: 600 }}>500-word niche competition brief</h4>
+                  <div style={{ marginBottom: 8 }}>
+                    <Badge color="info">Model: {selectedAnalysis.brief_model_used || 'fallback'}</Badge>
+                  </div>
+                  <p style={{ whiteSpace: 'pre-line', color: 'var(--text-secondary)', lineHeight: 1.7, maxHeight: 320, overflowY: 'auto' }}>
+                    {selectedAnalysis.detailed_brief}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </Card>
