@@ -1,184 +1,234 @@
 'use client';
 
 import React from 'react';
-import { 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Target,
-  BarChart2,
-  PieChart,
-  Megaphone,
-  Download,
-  Activity,
-  ChevronRight,
-  TrendingUp,
-  Sparkles,
-  Search,
-  Users
-} from 'lucide-react';
-import { Card, Button, Badge } from '@/components/ui/ui-components';
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  Legend
+  TrendingUp, TrendingDown, Eye, MousePointerClick, BarChart3, Megaphone,
+  Sparkles, ArrowRight, Clock, Zap, ChevronRight
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar
 } from 'recharts';
-import styles from '../dashboard.module.css';
+import { Header } from '@/components/layout/Header';
 
-const trafficData = [
-  { name: 'Mon', organic: 4000, paid: 2400 },
-  { name: 'Tue', organic: 3000, paid: 1398 },
-  { name: 'Wed', organic: 2000, paid: 9800 },
-  { name: 'Thu', organic: 2780, paid: 3908 },
-  { name: 'Fri', organic: 1890, paid: 4800 },
-  { name: 'Sat', organic: 2390, paid: 3800 },
-  { name: 'Sun', organic: 3490, paid: 4300 },
+const stats = [
+  { label: 'Engagement', value: '12.8K', change: '+14.2%', trend: 'up', icon: TrendingUp, color: 'text-emerald-400' },
+  { label: 'Total Visits', value: '48.2K', change: '+8.7%', trend: 'up', icon: Eye, color: 'text-blue-400' },
+  { label: 'Conversions', value: '3,420', change: '+2.4%', trend: 'up', icon: MousePointerClick, color: 'text-violet-400' },
+  { label: 'Active Campaigns', value: '7', change: '+2', trend: 'up', icon: Megaphone, color: 'text-amber-400' },
 ];
 
-export default function Dashboard() {
+const trafficData = [
+  { name: 'Mon', organic: 4200, paid: 2800, engagement: 320 },
+  { name: 'Tue', organic: 3800, paid: 2200, engagement: 280 },
+  { name: 'Wed', organic: 5100, paid: 3400, engagement: 450 },
+  { name: 'Thu', organic: 4700, paid: 3100, engagement: 390 },
+  { name: 'Fri', organic: 5800, paid: 4200, engagement: 520 },
+  { name: 'Sat', organic: 4300, paid: 2900, engagement: 350 },
+  { name: 'Sun', organic: 4900, paid: 3600, engagement: 420 },
+];
+
+const engagementData = [
+  { name: 'Mon', likes: 820, shares: 230, comments: 145 },
+  { name: 'Tue', likes: 690, shares: 180, comments: 120 },
+  { name: 'Wed', likes: 1050, shares: 340, comments: 210 },
+  { name: 'Thu', likes: 880, shares: 260, comments: 175 },
+  { name: 'Fri', likes: 1200, shares: 410, comments: 280 },
+  { name: 'Sat', likes: 750, shares: 200, comments: 130 },
+  { name: 'Sun', likes: 960, shares: 320, comments: 195 },
+];
+
+const aiInsights = [
+  { title: 'Reels performing 2x better', desc: 'Short-form video content is generating 2x more engagement than static posts this week.', type: 'opportunity' },
+  { title: 'Instagram reach declining', desc: 'Your Instagram reach dropped 18% — consider boosting top posts or changing posting schedule.', type: 'problem' },
+  { title: 'SEO keyword opportunity', desc: '"AI marketing tool" moved to position #8. With minor optimization, you can hit top 5.', type: 'trend' },
+];
+
+const suggestedActions = [
+  { action: 'Post at 8 PM for max engagement', reasoning: 'Your audience is 40% more active between 7-9 PM', priority: 'high' },
+  { action: 'Increase Reels budget by 15%', reasoning: 'ROI on Reels is 2.3x higher than static posts', priority: 'high' },
+  { action: 'A/B test email subject lines', reasoning: 'Open rates dropped 5% — test shorter subjects', priority: 'medium' },
+  { action: 'Respond to 12 comments', reasoning: 'Engagement replies boost algorithm ranking', priority: 'low' },
+];
+
+const recentActivity = [
+  { action: 'Campaign "Summer Boost" went live', timestamp: '2 hours ago', type: 'campaign' },
+  { action: 'AI generated 5 new post ideas', timestamp: '4 hours ago', type: 'content' },
+  { action: 'Analytics report ready for download', timestamp: '6 hours ago', type: 'analytics' },
+  { action: 'New freelancer application received', timestamp: '1 day ago', type: 'system' },
+];
+
+export default function DashboardPage() {
   return (
     <div>
-      <div className={styles.pageHeader}>
-        <div>
-          <h1 className={styles.pageTitle} style={{ fontSize: '24px', fontWeight: 600 }}>Channel dashboard</h1>
-        </div>
-        <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-          <Button variant="ghost" size="sm" style={{ border: '1px solid var(--border-default)', borderRadius: '50%', width: 40, height: 40, padding: 0 }}><Activity size={18} /></Button>
-          <Button variant="ghost" size="sm" style={{ border: '1px solid var(--border-default)', borderRadius: '50%', width: 40, height: 40, padding: 0 }}><Download size={18} /></Button>
-        </div>
-      </div>
+      <Header title="Dashboard" subtitle="Your marketing command center" />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(350px, 1fr) minmax(350px, 1.2fr)', gap: 'var(--spacing-lg)' }}>
-        
-        {/* LEFT COLUMN */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-          
-          {/* Latest Video Performance (Mapped to Latest Campaign) */}
-          <Card style={{ padding: 'var(--spacing-lg)' }}>
-            <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>Latest campaign performance</h2>
-            <div style={{ background: '#000', borderRadius: 8, padding: 'var(--spacing-xl)', marginBottom: 'var(--spacing-lg)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(45deg, rgba(62,166,255,0.1), transparent)', zIndex: 0 }} />
-               <div style={{ position: 'relative', zIndex: 1, padding: 'var(--spacing-md)' }}>
-                  <Sparkles size={24} color="var(--color-primary)" style={{ margin: '0 auto 8px' }} />
-                  <h3 style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: 'var(--font-size-xl)' }}>LogCipher</h3>
-                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 4 }}>P.S - Artificial Intelligence based Log Investigation</p>
-                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-primary)', marginTop: 8 }}>LogCipher | P.S - AI based Log Investigation Framework for Next-Generation Cyber...</p>
-               </div>
+      <div className="mt-6 space-y-6 px-8 pb-8">
+        {/* Stat Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-surface-100 p-5 transition-all hover:border-white/[0.12] hover:shadow-lg"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-500">{stat.label}</span>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </div>
+              <div className="mt-2 text-3xl font-bold text-white">{stat.value}</div>
+              <div className="mt-1 flex items-center gap-1 text-sm">
+                <TrendingUp className="h-3 w-3 text-emerald-400" />
+                <span className="text-emerald-400">{stat.change}</span>
+                <span className="text-zinc-600">vs last week</span>
+              </div>
+              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br from-brand-500/5 to-transparent transition-all group-hover:from-brand-500/10" />
             </div>
-            
-            <div style={{ borderBottom: '1px solid var(--border-default)', marginBottom: 'var(--spacing-md)', paddingBottom: 'var(--spacing-md)' }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-size-sm)', marginBottom: 8, color: 'var(--text-secondary)' }}>
-                 <span>First 85 days 1 hour</span>
-               </div>
-               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                 <span>Views</span>
-                 <span style={{ fontWeight: 600 }}>7</span>
-               </div>
-               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                 <span>Impressions click-through rate</span>
-                 <span style={{ fontWeight: 600 }}>2.7%</span>
-               </div>
-               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 'var(--font-size-sm)' }}>
-                 <span>Average view duration</span>
-                 <span style={{ fontWeight: 600 }}>1:31</span>
-               </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-              <Button variant="secondary" size="sm" style={{ flex: 1, borderRadius: 20 }}>GO TO VIDEO ANALYTICS</Button>
-              <Button variant="secondary" size="sm" style={{ flex: 1, borderRadius: 20 }}>SEE COMMENTS (0)</Button>
-            </div>
-          </Card>
-
-          {/* Create Post Prompt */}
-          <Card style={{ padding: 'var(--spacing-xl)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px dashed var(--border-strong)' }}>
-            <div style={{ width: 80, height: 80, background: 'var(--bg-surface-raised)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--spacing-md)', position: 'relative' }}>
-              <Megaphone size={32} color="var(--color-accent)" />
-              <div style={{ position: 'absolute', right: -10, top: 0, width: 24, height: 24, background: '#fff', borderRadius: '50%', border: '2px solid var(--bg-surface)' }} />
-            </div>
-            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-lg)', maxWidth: 200, lineHeight: 1.6 }}>
-               Create your first post to start a conversation and get feedback from your community.
-            </p>
-            <Button variant="secondary" style={{ borderRadius: 20, background: '#fff', color: '#000', fontWeight: 600 }}>Create post</Button>
-          </Card>
-
+          ))}
         </div>
 
-
-        {/* RIGHT COLUMN */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-          
-          {/* Channel Analytics */}
-          <Card style={{ padding: 'var(--spacing-lg)' }}>
-             <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: '24px' }}>Channel analytics</h2>
-             <div style={{ marginBottom: '24px', borderBottom: '1px solid var(--border-default)', paddingBottom: '24px' }}>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>Current subscribers</div>
-                <div style={{ fontSize: '48px', fontWeight: 400, marginTop: '8px' }}>1</div>
-             </div>
-
-             <div style={{ marginBottom: '16px' }}>
-                <h3 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>Summary</h3>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>Last 28 days</div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                   <span>Views</span>
-                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>0 <span style={{ color: 'var(--text-tertiary)' }}>—</span></span>
+        {/* AI Insights */}
+        <div className="ai-card animate-pulse-glow rounded-xl p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-violet-400" />
+            <h2 className="text-lg font-semibold text-white">AI Insights</h2>
+            <Badge className="ml-2 bg-violet-500/20 text-violet-300 border-violet-500/30">Live</Badge>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {aiInsights.map((insight, i) => (
+              <div key={i} className="rounded-lg border border-white/[0.06] bg-surface-0/50 p-4 transition-all hover:border-white/[0.12]">
+                <div className="mb-1 flex items-center gap-2">
+                  <div className={`h-2 w-2 rounded-full ${
+                    insight.type === 'opportunity' ? 'bg-emerald-400' :
+                    insight.type === 'problem' ? 'bg-rose-400' : 'bg-amber-400'
+                  }`} />
+                  <span className="text-sm font-semibold text-zinc-200">{insight.title}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                   <span>Watch time (hours)</span>
-                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>0.0 <span style={{ color: 'var(--text-tertiary)' }}>—</span></span>
-                </div>
-             </div>
-
-             <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>Top content</h3>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Last 48 hours · Views</div>
-                {/* Traffic Recharts substitution for top content */}
-                <div style={{ height: 120, width: '100%', marginTop: 8 }}>
-                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trafficData}>
-                      <defs>
-                        <linearGradient id="colorO" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-tertiary)', fontSize: 11 }} />
-                      <Tooltip contentStyle={{ background: 'var(--bg-surface-raised)', border: 'none', borderRadius: 4, color: '#fff' }} />
-                      <Area type="monotone" dataKey="organic" stroke="var(--color-primary)" fillOpacity={1} fill="url(#colorO)" />
-                    </AreaChart>
-                   </ResponsiveContainer>
-                </div>
-             </div>
-
-             <Button variant="secondary" size="md" style={{ borderRadius: 20, width: 'max-content' }}>GO TO CHANNEL ANALYTICS</Button>
-          </Card>
-
-          {/* What's new in Studio */}
-          <Card style={{ padding: 'var(--spacing-lg)' }}>
-             <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: '24px' }}>What's new in Studio</h2>
-             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <a href="#" style={{ paddingTop: '8px', paddingBottom: '16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                   Increasing Shorts length
-                </a>
-                <a href="#" style={{ paddingTop: '16px', paddingBottom: '16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                   Expansion of channel permissions
-                </a>
-                <a href="#" style={{ paddingTop: '16px', paddingBottom: '16px', fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                   Upcoming changes to Community Guidelines warnings
-                </a>
-             </div>
-          </Card>
-
+                <p className="text-xs leading-relaxed text-zinc-500">{insight.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* Suggested Actions */}
+        <Card className="border-white/[0.06] bg-surface-100">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Zap className="h-5 w-5 text-amber-400" />
+              Suggested Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {suggestedActions.map((action, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg border border-white/[0.04] bg-white/[0.02] p-3 transition-all hover:bg-white/[0.04]">
+                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    action.priority === 'high' ? 'bg-rose-500/20 text-rose-400' :
+                    action.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                    'bg-blue-500/20 text-blue-400'
+                  }`}>
+                    {i + 1}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-zinc-200">{action.action}</p>
+                    <p className="text-xs text-zinc-500">{action.reasoning}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-zinc-600" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Charts */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="border-white/[0.06] bg-surface-100">
+            <CardHeader>
+              <CardTitle className="text-white">Traffic Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trafficData}>
+                    <defs>
+                      <linearGradient id="colorOrg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorPaid" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} />
+                    <Tooltip contentStyle={{ background: '#1f1f23', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: '#fafafa', fontSize: 13 }} />
+                    <Area type="monotone" dataKey="organic" stroke="#3b82f6" fillOpacity={1} fill="url(#colorOrg)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="paid" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorPaid)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-3 flex items-center gap-4 text-xs text-zinc-500">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" /> Organic</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-violet-500" /> Paid</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/[0.06] bg-surface-100">
+            <CardHeader>
+              <CardTitle className="text-white">Engagement</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={engagementData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} />
+                    <Tooltip contentStyle={{ background: '#1f1f23', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: '#fafafa', fontSize: 13 }} />
+                    <Bar dataKey="likes" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="shares" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="comments" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-3 flex items-center gap-4 text-xs text-zinc-500">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" /> Likes</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-violet-500" /> Shares</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Comments</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Activity */}
+        <Card className="border-white/[0.06] bg-surface-100">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Clock className="h-5 w-5 text-zinc-500" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentActivity.map((item, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-white/[0.02]">
+                  <div className={`h-2 w-2 rounded-full ${
+                    item.type === 'campaign' ? 'bg-blue-400' :
+                    item.type === 'content' ? 'bg-violet-400' :
+                    item.type === 'analytics' ? 'bg-emerald-400' : 'bg-zinc-500'
+                  }`} />
+                  <span className="flex-1 text-sm text-zinc-300">{item.action}</span>
+                  <span className="text-xs text-zinc-600">{item.timestamp}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

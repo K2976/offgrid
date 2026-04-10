@@ -1,15 +1,23 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+});
+
 export const metadata: Metadata = {
-  title: 'OffGrid — AI Marketing Co-Pilot',
-  description: 'AI-powered marketing intelligence platform. Analyze performance, track competitors, generate content, and grow your brand with data-driven strategies.',
+  title: 'OffGrid — AI Marketing Copilot',
+  description: 'AI-powered marketing intelligence platform. Generate content, track performance, and get actionable marketing suggestions — all from one intelligent dashboard.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" className="dark">
+      <body className={`${inter.variable} antialiased`}>
+        {children}
+      </body>
     </html>
   );
 }

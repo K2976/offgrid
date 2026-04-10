@@ -1,34 +1,59 @@
 from datetime import date, datetime, timedelta
+import csv
+import io
+import uuid
 from urllib.parse import quote
 
 import httpx
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import (
     AIAnalysis,
+    AIInsight,
     Alert,
     AlertRule,
     AnalyticsSnapshot,
+    AnalyticsEvent,
     AutopilotBrief,
+    Campaign,
     Competitor,
+    Conversion,
+    Freelancer,
     GeneratedContent,
+    OnboardingData,
+    Profile,
     Report,
     User,
     Workspace,
 )
 from app.schemas import (
+    AIGenerateContentRequest,
+    AIRegenerateRequest,
     AlertRuleCreateRequest,
     AnalyzeRequest,
     OnboardingProfileRequest,
+    OnboardingBusinessInfoRequest,
+    OnboardingMarketingPreferencesRequest,
+    OnboardingStartRequest,
     AutopilotSettingsRequest,
+    BillboardRecommendRequest,
+    CampaignCreateRequest,
+    CampaignUpdateRequest,
+    CRMGenerateMessageRequest,
     CompetitorCreateRequest,
+    ConversionTrackRequest,
     ContentFeedbackRequest,
     ContentGenerateRequest,
+    EventTrackRequest,
+    FreelancerApplyRequest,
+    FreelancerAssignRequest,
     LoginRequest,
     RegisterRequest,
     ReportGenerateRequest,
+    SettingsUpdateRequest,
 )
 from app.security import (
     create_access_token,
@@ -37,6 +62,9 @@ from app.security import (
     hash_password,
     verify_password,
 )
+
+
+TEMP_CRM_UPLOADS: dict[str, dict] = {}
 
 
 def _get_or_create_default_workspace(db: Session, user: User) -> Workspace:
@@ -60,11 +88,22 @@ def register_user(db: Session, payload: RegisterRequest) -> dict:
         email=payload.email.lower(),
         password_hash=hash_password(payload.password),
         name=payload.name,
+        role=payload.role,
         company_name=payload.company_name,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    profile = Profile(
+        user_id=user.id,
+        role=user.role,
+        role_data={"company_name": payload.company_name} if payload.company_name else {},
+        integrations={},
+        preferences={},
+    )
+    db.add(profile)
+    db.commit()
 
     _get_or_create_default_workspace(db, user)
 
@@ -72,8 +111,9 @@ def register_user(db: Session, payload: RegisterRequest) -> dict:
         "id": user.id,
         "email": user.email,
         "name": user.name,
-        "access_token": create_access_token(user.id),
-        "refresh_token": create_refresh_token(user.id),
+        "role": user.role,
+        "access_token": create_access_token(user.id, user.role),
+        "refresh_token": create_refresh_token(user.id, user.role),
     }
 
 
@@ -86,17 +126,19 @@ def login_user(db: Session, payload: LoginRequest) -> dict:
         "id": user.id,
         "email": user.email,
         "name": user.name,
-        "access_token": create_access_token(user.id),
-        "refresh_token": create_refresh_token(user.id),
+        "role": user.role,
+        "access_token": create_access_token(user.id, user.role),
+        "refresh_token": create_refresh_token(user.id, user.role),
     }
 
 
 def get_current_user_profile(user: User) -> dict:
-    onboarding_complete = bool(user.company_name)
+    onboarding_complete = bool(user.company_name) if user.role == "company" else True
     return {
         "id": user.id,
         "email": user.email,
         "name": user.name,
+        "role": user.role,
         "company_name": user.company_name,
         "onboarding_complete": onboarding_complete,
     }
@@ -176,7 +218,7 @@ def refresh_access_token(db: Session, refresh_token: str) -> dict:
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    return {"access_token": create_access_token(user.id), "refresh_token": refresh_token}
+    return {"access_token": create_access_token(user.id, user.role), "refresh_token": refresh_token}
 
 
 def analytics_overview(db: Session, user: User, period: str) -> dict:
@@ -742,3 +784,615 @@ def upsert_onboarding_profile(db: Session, user: User, payload: OnboardingProfil
         },
         "user": get_current_user_profile(user),
     }
+
+
+def _require_company(user: User) -> None:
+    if user.role != "company":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company role required")
+
+
+def _get_or_create_profile(db: Session, user: User) -> Profile:
+    profile = db.query(Profile).filter(Profile.user_id == user.id).first()
+    if profile:
+        return profile
+    profile = Profile(user_id=user.id, role=user.role, role_data={}, integrations={}, preferences={})
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+
+def _get_or_create_onboarding(db: Session, user: User) -> OnboardingData:
+    row = db.query(OnboardingData).filter(OnboardingData.user_id == user.id).first()
+    if row:
+        return row
+    row = OnboardingData(user_id=user.id)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _call_groq_json(prompt: str, fallback: dict) -> tuple[dict, str]:
+    text = _call_groq(prompt)
+    if not text:
+        return fallback, "fallback"
+    try:
+        import json
+
+        return json.loads(text), "groq"
+    except Exception:
+        return fallback, "groq"
+
+
+def onboarding_start(db: Session, user: User, payload: OnboardingStartRequest) -> dict:
+    _require_company(user)
+    row = _get_or_create_onboarding(db, user)
+    row.business_type = payload.business_type
+    row.current_step = max(row.current_step, 1)
+    row.started_at = row.started_at or datetime.utcnow()
+    row.is_completed = False
+    db.commit()
+    return {"message": "Onboarding started", "business_type": row.business_type, "current_step": row.current_step}
+
+
+def onboarding_business_info(db: Session, user: User, payload: OnboardingBusinessInfoRequest) -> dict:
+    _require_company(user)
+    row = _get_or_create_onboarding(db, user)
+    if not row.business_type:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Start onboarding first")
+    row.business_info = payload.data
+    row.current_step = max(row.current_step, 2)
+    db.commit()
+    return {"message": "Business info saved", "current_step": row.current_step}
+
+
+def onboarding_marketing_preferences(
+    db: Session,
+    user: User,
+    payload: OnboardingMarketingPreferencesRequest,
+) -> dict:
+    _require_company(user)
+    row = _get_or_create_onboarding(db, user)
+    if not row.business_type:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Start onboarding first")
+    row.marketing_preferences = {
+        "budget": payload.budget,
+        "platforms": payload.platforms,
+        "goals": payload.goals,
+    }
+    row.current_step = max(row.current_step, 3)
+    db.commit()
+    return {"message": "Marketing preferences saved", "current_step": row.current_step}
+
+
+def onboarding_status(db: Session, user: User) -> dict:
+    _require_company(user)
+    row = _get_or_create_onboarding(db, user)
+    return {
+        "business_type": row.business_type,
+        "current_step": row.current_step,
+        "is_completed": row.is_completed,
+        "has_business_info": bool(row.business_info),
+        "has_marketing_preferences": bool(row.marketing_preferences),
+    }
+
+
+def generate_strategy(db: Session, user: User) -> dict:
+    _require_company(user)
+    onboarding = _get_or_create_onboarding(db, user)
+    if not onboarding.business_type:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Complete onboarding first")
+
+    fallback = {
+        "channels": onboarding.marketing_preferences.get("platforms", ["instagram", "linkedin"]),
+        "content_pillars": ["education", "social-proof", "offer-driven"],
+        "cadence": {"posts_per_week": 4, "stories_per_week": 5},
+        "kpis": ["reach", "clicks", "conversions"],
+        "next_actions": ["Launch campaign", "Track CTR", "Iterate weekly"],
+    }
+    prompt = (
+        "Return ONLY strict JSON with keys channels, content_pillars, cadence, kpis, next_actions. "
+        f"Business type: {onboarding.business_type}. "
+        f"Business info: {onboarding.business_info}. "
+        f"Preferences: {onboarding.marketing_preferences}."
+    )
+    plan, model_used = _call_groq_json(prompt, fallback)
+
+    row = AIInsight(
+        user_id=user.id,
+        category="strategy",
+        title="Initial marketing strategy",
+        content=plan,
+        model_used=model_used,
+    )
+    db.add(row)
+    db.commit()
+    return {"strategy": plan, "model": model_used}
+
+
+def onboarding_complete(db: Session, user: User) -> dict:
+    _require_company(user)
+    row = _get_or_create_onboarding(db, user)
+    if row.current_step < 3:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Complete all onboarding steps first")
+    row.is_completed = True
+    row.completed_at = datetime.utcnow()
+    db.commit()
+    strategy = generate_strategy(db, user)
+    return {"message": "Onboarding completed", "strategy": strategy["strategy"]}
+
+
+def create_campaign(db: Session, user: User, payload: CampaignCreateRequest) -> dict:
+    _require_company(user)
+    row = Campaign(
+        user_id=user.id,
+        name=payload.name,
+        goal=payload.goal,
+        budget=payload.budget,
+        platform=payload.platform,
+        details=payload.details,
+        status="active",
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "name": row.name,
+        "goal": row.goal,
+        "budget": row.budget,
+        "platform": row.platform,
+        "status": row.status,
+        "details": row.details,
+    }
+
+
+def list_campaigns(db: Session, user: User) -> dict:
+    rows = db.query(Campaign).filter(Campaign.user_id == user.id).order_by(Campaign.created_at.desc()).all()
+    return {
+        "campaigns": [
+            {
+                "id": c.id,
+                "name": c.name,
+                "goal": c.goal,
+                "budget": c.budget,
+                "platform": c.platform,
+                "status": c.status,
+                "details": c.details,
+                "performance_metrics": c.performance_metrics,
+            }
+            for c in rows
+        ]
+    }
+
+
+def get_campaign(db: Session, user: User, campaign_id: str) -> dict:
+    row = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.user_id == user.id).first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    return {
+        "id": row.id,
+        "name": row.name,
+        "goal": row.goal,
+        "budget": row.budget,
+        "platform": row.platform,
+        "status": row.status,
+        "details": row.details,
+        "performance_metrics": row.performance_metrics,
+    }
+
+
+def update_campaign(db: Session, user: User, campaign_id: str, payload: CampaignUpdateRequest) -> dict:
+    row = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.user_id == user.id).first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
+    if payload.name is not None:
+        row.name = payload.name
+    if payload.goal is not None:
+        row.goal = payload.goal
+    if payload.budget is not None:
+        row.budget = payload.budget
+    if payload.platform is not None:
+        row.platform = payload.platform
+    if payload.status is not None:
+        row.status = payload.status
+    if payload.details is not None:
+        row.details = payload.details
+
+    db.commit()
+    db.refresh(row)
+    return get_campaign(db, user, row.id)
+
+
+def delete_campaign(db: Session, user: User, campaign_id: str) -> dict:
+    row = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.user_id == user.id).first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    db.delete(row)
+    db.commit()
+    return {"message": "Campaign removed"}
+
+
+def ai_generate_content(db: Session, user: User, payload: AIGenerateContentRequest) -> dict:
+    onboarding = db.query(OnboardingData).filter(OnboardingData.user_id == user.id).first()
+    campaign = None
+    if payload.campaign_id:
+        campaign = db.query(Campaign).filter(Campaign.id == payload.campaign_id, Campaign.user_id == user.id).first()
+
+    fallback = {
+        "post": f"{payload.topic}: practical tips and a clear CTA.",
+        "caption": f"{payload.topic} in {payload.tone} tone for {payload.platform}.",
+        "hashtags": ["#marketing", "#growth", "#ai"],
+        "best_time": "18:30",
+    }
+    prompt = (
+        "Return ONLY strict JSON with keys post, caption, hashtags (array), best_time. "
+        f"Generate {payload.content_type} for platform {payload.platform}, tone {payload.tone}, topic {payload.topic}. "
+        f"Audience: {payload.audience}. Campaign: {campaign.details if campaign else {}}. "
+        f"Onboarding: {onboarding.business_info if onboarding else {}}"
+    )
+    output, model = _call_groq_json(prompt, fallback)
+
+    if campaign:
+        campaign.performance_metrics = {
+            **campaign.performance_metrics,
+            "last_generated_content_at": datetime.utcnow().isoformat() + "Z",
+        }
+        db.commit()
+
+    return {"result": output, "model": model}
+
+
+def ai_regenerate_content(db: Session, user: User, payload: AIRegenerateRequest) -> dict:
+    prompt = (
+        "Return ONLY strict JSON with keys post, caption, hashtags (array), best_time. "
+        f"Regenerate a variation for this previous output: {payload.previous_output}. "
+        f"Variation request: {payload.variation_note}"
+    )
+    fallback = {
+        "post": "Variation with sharper hook and clearer CTA.",
+        "caption": "Try this fresh angle to improve engagement.",
+        "hashtags": ["#brand", "#campaign", "#offgrid"],
+        "best_time": "12:15",
+    }
+    output, model = _call_groq_json(prompt, fallback)
+    return {"result": output, "model": model}
+
+
+def track_analytics_event(db: Session, user: User, payload: EventTrackRequest) -> dict:
+    row = AnalyticsEvent(
+        user_id=user.id,
+        campaign_id=payload.campaign_id,
+        event_type=payload.event_type,
+        platform=payload.platform,
+        value=payload.value,
+        event_metadata=payload.metadata,
+    )
+    db.add(row)
+    db.commit()
+    return {"message": "Event tracked", "event_id": row.id}
+
+
+def analytics_summary(db: Session, user: User) -> dict:
+    rows = db.query(AnalyticsEvent).filter(AnalyticsEvent.user_id == user.id).all()
+    total_visits = sum(1 for r in rows if r.event_type == "page_view")
+    total_clicks = sum(1 for r in rows if r.event_type == "click")
+    total_conversions = sum(1 for r in rows if r.event_type == "conversion")
+    conversion_rate = (total_conversions / total_visits * 100) if total_visits else 0
+    return {
+        "total_events": len(rows),
+        "total_visits": total_visits,
+        "total_clicks": total_clicks,
+        "conversions": total_conversions,
+        "conversion_rate": round(conversion_rate, 2),
+    }
+
+
+def analytics_insights(db: Session, user: User) -> dict:
+    summary = analytics_summary(db, user)
+    fallback = {
+        "insights": [
+            "Clicks are healthy but conversion can improve with stronger CTA.",
+            "Run A/B tests on headline and first 3 lines.",
+        ],
+        "suggestions": ["Post at peak times", "Retarget users who clicked but did not convert"],
+    }
+    prompt = (
+        "Return ONLY strict JSON with keys insights (array), suggestions (array). "
+        f"Generate concise AI insights from this analytics summary: {summary}"
+    )
+    content, model_used = _call_groq_json(prompt, fallback)
+    row = AIInsight(
+        user_id=user.id,
+        category="analytics",
+        title="Analytics insights",
+        content=content,
+        model_used=model_used,
+    )
+    db.add(row)
+    db.commit()
+    return {"summary": summary, "insights": content, "model": model_used}
+
+
+def _fetch_billboards(lat: float, lng: float, radius: int) -> list[dict]:
+    query = f"""
+    [out:json][timeout:15];
+    (
+      node(around:{radius},{lat},{lng})[\"advertising\"=\"billboard\"];
+      node(around:{radius},{lat},{lng})[\"amenity\"=\"advertising\"];
+    );
+    out center 40;
+    """
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post("https://overpass-api.de/api/interpreter", data=query)
+            resp.raise_for_status()
+            data = resp.json()
+        items = []
+        for el in data.get("elements", []):
+            tags = el.get("tags", {})
+            items.append(
+                {
+                    "id": str(el.get("id")),
+                    "name": tags.get("name", "Unnamed Billboard"),
+                    "lat": el.get("lat"),
+                    "lng": el.get("lon"),
+                    "address": tags.get("addr:full") or tags.get("addr:street") or "",
+                }
+            )
+        return items
+    except Exception:
+        return []
+
+
+def billboards_nearby(lat: float, lng: float, radius_meters: int) -> dict:
+    rows = _fetch_billboards(lat, lng, radius_meters)
+    if not rows:
+        rows = [
+            {"id": "sample-1", "name": "Downtown Junction Board", "lat": lat + 0.01, "lng": lng + 0.01, "address": "Downtown"},
+            {"id": "sample-2", "name": "Transit Hub Digital Board", "lat": lat - 0.008, "lng": lng + 0.012, "address": "Transit Hub"},
+        ]
+    return {"count": len(rows), "locations": rows}
+
+
+def recommend_billboards(db: Session, user: User, payload: BillboardRecommendRequest) -> dict:
+    nearby = billboards_nearby(payload.lat, payload.lng, payload.radius_meters)["locations"]
+    scored = []
+    for i, row in enumerate(nearby[:10]):
+        score = 100 - i * 6
+        if payload.business_type == "event":
+            score += 5
+        if payload.budget < 1000:
+            score -= 10
+        scored.append({**row, "score": max(score, 1)})
+    top = sorted(scored, key=lambda x: x["score"], reverse=True)[:5]
+
+    reasoning_prompt = (
+        "Provide 1-line reasoning for each billboard recommendation based on audience and budget. "
+        f"Audience={payload.audience}, budget={payload.budget}, locations={top}"
+    )
+    reasoning_text, _ = _generate_ai_text(reasoning_prompt)
+    return {"recommendations": top, "reasoning": reasoning_text or "Top spots maximize visibility and commute traffic."}
+
+
+def crm_upload_csv(user: User, csv_text: str) -> dict:
+    reader = csv.DictReader(io.StringIO(csv_text))
+    rows = [row for row in reader][:500]
+    token = f"crm-{user.id[:8]}-{uuid.uuid4().hex[:10]}"
+    TEMP_CRM_UPLOADS[token] = {"user_id": user.id, "rows": rows, "created_at": datetime.utcnow()}
+    return {"upload_token": token, "rows_parsed": len(rows), "columns": reader.fieldnames or []}
+
+
+def crm_generate_message(db: Session, user: User, payload: CRMGenerateMessageRequest) -> dict:
+    cached = TEMP_CRM_UPLOADS.get(payload.upload_token)
+    if not cached or cached.get("user_id") != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload token not found")
+
+    sample = cached.get("rows", [])[:5]
+    prompt = (
+        "Generate short personalized outreach messages for these contacts. "
+        f"Objective={payload.objective}, tone={payload.tone}, sample_rows={sample}."
+    )
+    text, model = _generate_ai_text(prompt)
+    if not text:
+        text = "Hi {{name}}, we noticed your interest and prepared a special offer for you."
+    return {"message_template": text, "model": model, "sample_size": len(sample)}
+
+
+def crm_suggestions(user: User) -> dict:
+    recent = [v for v in TEMP_CRM_UPLOADS.values() if v.get("user_id") == user.id]
+    audience_size = sum(len(v.get("rows", [])) for v in recent)
+    return {
+        "suggestions": [
+            "Segment contacts by interest tags before sending campaigns.",
+            "Use urgency-based CTA for users inactive >14 days.",
+            "Run a 3-message drip sequence and track click-through.",
+        ],
+        "audience_size_in_temp_uploads": audience_size,
+    }
+
+
+def freelancers_list(db: Session) -> dict:
+    rows = db.query(Freelancer).order_by(Freelancer.score.desc(), Freelancer.completed_jobs.desc()).all()
+    return {
+        "freelancers": [
+            {
+                "id": f.id,
+                "name": f.name,
+                "email": f.email,
+                "skills": f.skills,
+                "niche": f.niche,
+                "rate_per_hour": f.rate_per_hour,
+                "score": f.score,
+                "completed_jobs": f.completed_jobs,
+            }
+            for f in rows
+        ]
+    }
+
+
+def freelancer_apply(db: Session, user: User, payload: FreelancerApplyRequest) -> dict:
+    if user.role != "freelancer":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Freelancer role required")
+
+    row = db.query(Freelancer).filter(Freelancer.user_id == user.id).first()
+    if not row:
+        row = Freelancer(
+            user_id=user.id,
+            name=user.name,
+            email=user.email,
+            skills=payload.skills,
+            niche=payload.niche,
+            rate_per_hour=payload.rate_per_hour,
+        )
+        db.add(row)
+    else:
+        row.skills = payload.skills
+        row.niche = payload.niche
+        row.rate_per_hour = payload.rate_per_hour
+    db.commit()
+    db.refresh(row)
+    return {"message": "Freelancer profile active", "freelancer_id": row.id}
+
+
+def freelancer_assign(db: Session, user: User, payload: FreelancerAssignRequest) -> dict:
+    _require_company(user)
+    campaign = db.query(Campaign).filter(Campaign.id == payload.campaign_id, Campaign.user_id == user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
+    freelancer = db.query(Freelancer).filter(Freelancer.id == payload.freelancer_id).first()
+    if not freelancer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Freelancer not found")
+
+    campaign.assigned_freelancer_id = freelancer.id
+    db.commit()
+    return {
+        "message": "Freelancer assigned",
+        "campaign_id": campaign.id,
+        "freelancer_id": freelancer.id,
+    }
+
+
+def freelancers_leaderboard(db: Session) -> dict:
+    rows = (
+        db.query(
+            Freelancer.id,
+            Freelancer.name,
+            func.count(Conversion.id).label("conversions"),
+            func.coalesce(func.sum(Conversion.value), 0).label("revenue"),
+        )
+        .outerjoin(Conversion, Conversion.freelancer_id == Freelancer.id)
+        .group_by(Freelancer.id, Freelancer.name)
+        .order_by(func.count(Conversion.id).desc(), func.sum(Conversion.value).desc())
+        .limit(20)
+        .all()
+    )
+    return {
+        "leaderboard": [
+            {"freelancer_id": r.id, "name": r.name, "conversions": int(r.conversions), "revenue": float(r.revenue or 0)}
+            for r in rows
+        ]
+    }
+
+
+def track_conversion(db: Session, payload: ConversionTrackRequest) -> dict:
+    campaign = db.query(Campaign).filter(Campaign.id == payload.campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
+    row = Conversion(
+        campaign_id=campaign.id,
+        freelancer_id=campaign.assigned_freelancer_id,
+        referral_id=payload.referral_id,
+        value=payload.value,
+        conversion_metadata=payload.metadata,
+    )
+    db.add(row)
+
+    if campaign.assigned_freelancer_id:
+        freelancer = db.query(Freelancer).filter(Freelancer.id == campaign.assigned_freelancer_id).first()
+        if freelancer:
+            freelancer.completed_jobs += 1
+            freelancer.score = round(freelancer.score + 1.0, 2)
+
+    db.commit()
+    return {"message": "Conversion tracked", "conversion_id": row.id}
+
+
+def get_settings(db: Session, user: User) -> dict:
+    profile = _get_or_create_profile(db, user)
+    return {
+        "profile": get_current_user_profile(user),
+        "role_data": profile.role_data,
+        "integrations": profile.integrations,
+        "preferences": profile.preferences,
+    }
+
+
+def update_settings(db: Session, user: User, payload: SettingsUpdateRequest) -> dict:
+    profile = _get_or_create_profile(db, user)
+    if payload.role_data is not None:
+        profile.role_data = {**profile.role_data, **payload.role_data}
+    if payload.integrations is not None:
+        profile.integrations = {**profile.integrations, **payload.integrations}
+    if payload.preferences is not None:
+        profile.preferences = {**profile.preferences, **payload.preferences}
+    db.commit()
+    db.refresh(profile)
+    return get_settings(db, user)
+
+
+def run_periodic_analytics_aggregation(db: Session) -> None:
+    user_ids = [u.id for u in db.query(User.id).all()]
+    for user_id in user_ids:
+        rows = db.query(AnalyticsEvent).filter(AnalyticsEvent.user_id == user_id).all()
+        summary = {
+            "events": len(rows),
+            "visits": sum(1 for r in rows if r.event_type == "page_view"),
+            "clicks": sum(1 for r in rows if r.event_type == "click"),
+            "conversions": sum(1 for r in rows if r.event_type == "conversion"),
+        }
+        db.add(
+            AIInsight(
+                user_id=user_id,
+                category="aggregation",
+                title="Periodic analytics aggregation",
+                content=summary,
+                model_used="aggregator",
+            )
+        )
+    db.commit()
+
+
+def run_daily_ai_insight_generation(db: Session) -> None:
+    users = db.query(User).all()
+    for user in users:
+        summary = analytics_summary(db, user)
+        db.add(
+            AIInsight(
+                user_id=user.id,
+                category="daily_insight",
+                title="Daily insight",
+                content={
+                    "summary": summary,
+                    "suggestion": "Double down on best-performing platform and adjust CTA wording.",
+                },
+                model_used="scheduler",
+            )
+        )
+    db.commit()
+
+
+def run_campaign_performance_updates(db: Session) -> None:
+    campaigns = db.query(Campaign).all()
+    for c in campaigns:
+        conversion_count = db.query(func.count(Conversion.id)).filter(Conversion.campaign_id == c.id).scalar() or 0
+        c.performance_metrics = {
+            **c.performance_metrics,
+            "conversion_count": int(conversion_count),
+            "updated_at": datetime.utcnow().isoformat() + "Z",
+        }
+    db.commit()

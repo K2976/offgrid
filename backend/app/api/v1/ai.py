@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.dependencies import get_current_user
 from app.models import User
-from app.schemas import AnalyzeRequest
-from app.services import ai_history, run_ai_analysis
+from app.schemas import AIGenerateContentRequest, AIRegenerateRequest, AnalyzeRequest
+from app.services import ai_generate_content, ai_regenerate_content, ai_history, generate_strategy, run_ai_analysis
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -17,6 +17,29 @@ def analyze(
     user: User = Depends(get_current_user),
 ):
     return run_ai_analysis(db, user, payload)
+
+
+@router.post("/generate-content")
+def generate_content(
+    payload: AIGenerateContentRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return ai_generate_content(db, user, payload)
+
+
+@router.post("/regenerate")
+def regenerate(
+    payload: AIRegenerateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return ai_regenerate_content(db, user, payload)
+
+
+@router.post("/generate-strategy")
+def generate_full_strategy(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return generate_strategy(db, user)
 
 
 @router.get("/history")

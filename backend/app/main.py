@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+import asyncio
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -8,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.v1.router import api_router
+from app.background import analytics_aggregation_loop, campaign_updates_loop, daily_ai_insights_loop
 from app.config import settings
 from app.db import Base, engine
 
@@ -44,7 +46,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -96,6 +98,17 @@ app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 
 @app.on_event("startup")
-def on_startup() -> None:
+async def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
+    app.state.bg_tasks = [
+        asyncio.create_task(analytics_aggregation_loop()),
+        asyncio.create_task(daily_ai_insights_loop()),
+        asyncio.create_task(campaign_updates_loop()),
+    ]
     logger.info("service_started")
+
+
+@app.on_event("shutdown")
+async def on_shutdown() -> None:
+    for task in getattr(app.state, "bg_tasks", []):
+        task.cancel()

@@ -1,112 +1,165 @@
 'use client';
 
 import React, { useState } from 'react';
-import { BarChart3, Globe, Search } from 'lucide-react';
-import { Tabs, StatCard, Card } from '@/components/ui/ui-components';
-import { formatNumber } from '@/lib/utils';
-import styles from '../../dashboard.module.css';
+import { BarChart3, TrendingUp, Sparkles, Filter, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Header } from '@/components/layout/Header';
+import {
+  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
 
-const socialMock = {
-  followers: { current: 8500, change: 320, growth_pct: 3.9 },
-  engagement: { rate: 5.1, likes: 4200, comments: 680, shares: 190 },
-  reach: { total: 67000, avg_per_post: 3350 },
-  top_posts: [
-    { id: '1', content_preview: '🚀 Excited to announce our new AI feature...', engagement_score: 8.7, posted_at: '2026-04-08' },
-    { id: '2', content_preview: 'Behind the scenes at OffGrid HQ 🎬', engagement_score: 7.2, posted_at: '2026-04-05' },
-  ],
-};
+const trafficData = [
+  { date: 'Apr 1', visits: 3200, organic: 2100, paid: 1100 },
+  { date: 'Apr 2', visits: 3800, organic: 2400, paid: 1400 },
+  { date: 'Apr 3', visits: 4100, organic: 2800, paid: 1300 },
+  { date: 'Apr 4', visits: 3600, organic: 2200, paid: 1400 },
+  { date: 'Apr 5', visits: 5200, organic: 3600, paid: 1600 },
+  { date: 'Apr 6', visits: 4800, organic: 3200, paid: 1600 },
+  { date: 'Apr 7', visits: 4200, organic: 2800, paid: 1400 },
+];
 
-const seoMock = [
-  { keyword: 'ai marketing tool', position: 8, change: -3, impressions: 1200, clicks: 89, ctr: 7.4 },
-  { keyword: 'marketing automation', position: 12, change: 2, impressions: 3400, clicks: 156, ctr: 4.6 },
-  { keyword: 'social media analytics', position: 15, change: -1, impressions: 2100, clicks: 98, ctr: 4.7 },
-  { keyword: 'competitor analysis tool', position: 6, change: -5, impressions: 890, clicks: 112, ctr: 12.6 },
+const conversionData = [
+  { date: 'Apr 1', conversions: 42, rate: 3.2 },
+  { date: 'Apr 2', conversions: 55, rate: 3.8 },
+  { date: 'Apr 3', conversions: 48, rate: 3.5 },
+  { date: 'Apr 4', conversions: 62, rate: 4.1 },
+  { date: 'Apr 5', conversions: 78, rate: 4.5 },
+  { date: 'Apr 6', conversions: 65, rate: 4.0 },
+  { date: 'Apr 7', conversions: 71, rate: 4.3 },
+];
+
+const engagementData = [
+  { date: 'Apr 1', rate: 4.2, likes: 820, comments: 145 },
+  { date: 'Apr 2', rate: 3.8, likes: 690, comments: 120 },
+  { date: 'Apr 3', rate: 5.1, likes: 1050, comments: 210 },
+  { date: 'Apr 4', rate: 4.5, likes: 880, comments: 175 },
+  { date: 'Apr 5', rate: 6.2, likes: 1200, comments: 280 },
+  { date: 'Apr 6', rate: 5.0, likes: 950, comments: 195 },
+  { date: 'Apr 7', rate: 5.5, likes: 1080, comments: 230 },
+];
+
+const insights = [
+  { title: 'CTR improved by 23%', desc: 'Your click-through rate jumped after switching to shorter subject lines in email campaigns.', impact: 'positive' },
+  { title: 'Drop-off at checkout page', desc: '38% of users leave at the checkout step. Consider simplifying the form or adding trust signals.', impact: 'negative' },
+  { title: 'Instagram Reels outperforming', desc: 'Reels generate 3.2x more reach than static images. Increase video content allocation.', impact: 'positive' },
 ];
 
 export default function AnalyticsPage() {
-  const [tab, setTab] = useState('social');
+  const [dateRange, setDateRange] = useState('7d');
+  const [platform, setPlatform] = useState('all');
+
+  const tooltipStyle = { background: '#1f1f23', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: '#fafafa', fontSize: 13 };
 
   return (
     <div>
-      <div className={styles.sectionHeader}>
-        <h1 className={styles.pageTitle}>Analytics</h1>
-      </div>
+      <Header title="Analytics" subtitle="Track your marketing performance" />
 
-      <Tabs
-        tabs={[
-          { id: 'social', label: '📱 Social Media' },
-          { id: 'website', label: '🌐 Website' },
-          { id: 'seo', label: '🔍 SEO' },
-        ]}
-        active={tab}
-        onChange={setTab}
-      />
-
-      <div style={{ marginTop: 'var(--spacing-xl)' }}>
-        {tab === 'social' && (
-          <>
-            <div className={styles.dashGrid}>
-              <StatCard label="Followers" value={formatNumber(socialMock.followers.current)} change={`+${socialMock.followers.change}`} trend="up" />
-              <StatCard label="Engagement Rate" value={`${socialMock.engagement.rate}%`} trend="up" />
-              <StatCard label="Total Reach" value={formatNumber(socialMock.reach.total)} trend="up" />
-              <StatCard label="Avg Reach/Post" value={formatNumber(socialMock.reach.avg_per_post)} trend="up" />
-            </div>
-            <Card>
-              <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
-                <BarChart3 size={18} style={{ display: 'inline', marginRight: 8 }} />Top Performing Posts
-              </h3>
-              {socialMock.top_posts.map((p) => (
-                <div key={p.id} style={{ padding: 'var(--spacing-md)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 'var(--font-size-sm)' }}>{p.content_preview}</span>
-                  <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{p.engagement_score}</span>
-                </div>
-              ))}
-            </Card>
-          </>
-        )}
-
-        {tab === 'website' && (
-          <div className={styles.dashGrid}>
-            <StatCard label="Total Visits" value={formatNumber(23400)} change="+8% vs last period" trend="up" icon={<Globe size={18} />} />
-            <StatCard label="Bounce Rate" value="42.1%" change="-2.3%" trend="up" />
-            <StatCard label="Conversions" value="312" change="+1.33% rate" trend="up" />
-            <StatCard label="Avg Session" value="3m 5s" change="+12s" trend="up" />
+      <div className="mt-6 space-y-6 px-8 pb-8">
+        {/* Filter Bar */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex rounded-lg border border-white/[0.08] bg-white/[0.03] p-1">
+            {['7d', '30d', '90d', '1y'].map((d) => (
+              <button key={d} onClick={() => setDateRange(d)} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${dateRange === d ? 'bg-brand-500 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}>
+                {d === '7d' ? '7 Days' : d === '30d' ? '30 Days' : d === '90d' ? '90 Days' : '1 Year'}
+              </button>
+            ))}
           </div>
-        )}
+          <div className="flex rounded-lg border border-white/[0.08] bg-white/[0.03] p-1">
+            {['all', 'instagram', 'google', 'linkedin', 'email'].map((p) => (
+              <button key={p} onClick={() => setPlatform(p)} className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-all ${platform === p ? 'bg-brand-500 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}>
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {tab === 'seo' && (
-          <Card>
-            <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
-              <Search size={18} style={{ display: 'inline', marginRight: 8 }} />Keyword Rankings
-            </h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-size-sm)' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>
-                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Keyword</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>Position</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>Change</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>Impressions</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>Clicks</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>CTR</th>
-                </tr>
-              </thead>
-              <tbody>
-                {seoMock.map((k) => (
-                  <tr key={k.keyword} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 500 }}>{k.keyword}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>#{k.position}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right', color: k.change < 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                      {k.change < 0 ? `↑${Math.abs(k.change)}` : `↓${k.change}`}
-                    </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>{formatNumber(k.impressions)}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>{k.clicks}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>{k.ctr}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Charts Grid */}
+        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+          {/* Traffic */}
+          <Card className="border-white/[0.06] bg-surface-100 xl:col-span-1">
+            <CardHeader><CardTitle className="text-white">Traffic</CardTitle></CardHeader>
+            <CardContent>
+              <div className="h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trafficData}>
+                    <defs>
+                      <linearGradient id="tGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 11 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 11 }} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Area type="monotone" dataKey="visits" stroke="#3b82f6" fillOpacity={1} fill="url(#tGrad)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
           </Card>
-        )}
+
+          {/* Conversions */}
+          <Card className="border-white/[0.06] bg-surface-100">
+            <CardHeader><CardTitle className="text-white">Conversions</CardTitle></CardHeader>
+            <CardContent>
+              <div className="h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={conversionData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 11 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 11 }} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="conversions" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Engagement */}
+          <Card className="border-white/[0.06] bg-surface-100">
+            <CardHeader><CardTitle className="text-white">Engagement Rate</CardTitle></CardHeader>
+            <CardContent>
+              <div className="h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={engagementData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 11 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 11 }} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Line type="monotone" dataKey="rate" stroke="#22c55e" strokeWidth={2} dot={{ fill: '#22c55e', r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* AI Insights */}
+        <div className="ai-card rounded-xl p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-violet-400" />
+            <h2 className="text-lg font-semibold text-white">AI Insights</h2>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {insights.map((insight, i) => (
+              <div key={i} className="rounded-lg border border-white/[0.06] bg-surface-0/50 p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  {insight.impact === 'positive' ? (
+                    <ArrowUpRight className="h-4 w-4 text-emerald-400" />
+                  ) : (
+                    <ArrowDownRight className="h-4 w-4 text-rose-400" />
+                  )}
+                  <span className="text-sm font-semibold text-zinc-200">{insight.title}</span>
+                </div>
+                <p className="text-xs leading-relaxed text-zinc-500">{insight.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

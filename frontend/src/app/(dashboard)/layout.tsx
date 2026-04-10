@@ -1,11 +1,9 @@
 'use client';
 
-import React from 'react';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { useAuthStore } from '@/stores/auth-store';
-import styles from '@/components/layout/layout.module.css';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -25,14 +23,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [isAuthenticated, isLoading, pathname, router]);
 
   if (isLoading || !isAuthenticated) {
-    return null;
+    return (
+      <div className="flex h-screen items-center justify-center bg-surface-0">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="text-sm text-zinc-500">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <>
       <Sidebar />
-      <main className={styles.shell}>
-        <div className={styles.shellContent}>
+      <main className="ml-[260px] min-h-screen transition-all duration-300">
+        <div className="animate-fade-in px-8 py-6">
           {children}
         </div>
       </main>
