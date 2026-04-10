@@ -114,10 +114,10 @@
 }
 
 .btn-secondary {
-  background: #ffffff;
+  background: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .btn-secondary:hover:not(:disabled) {
@@ -223,7 +223,7 @@
 .input,
 .select,
 .textarea {
-  background: #ffffff;
+  background: transparent;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   padding: 10px 14px;
@@ -233,7 +233,6 @@
   transition: all var(--transition-fast);
   outline: none;
   width: 100%;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .input:focus,
@@ -275,24 +274,22 @@
 /* --- Tabs --- */
 .tabs {
   display: inline-flex;
-  gap: 4px;
-  background: var(--bg-surface-raised);
-  border-radius: 8px;
-  padding: 4px;
-  border: 1px solid var(--border-default);
+  gap: var(--spacing-md);
+  border-bottom: 1px solid var(--border-default);
+  width: 100%;
 }
 
 .tab {
-  padding: 6px 16px;
+  padding: 12px 16px;
   border: none;
   background: transparent;
-  border-radius: 6px;
   color: var(--text-secondary);
   font-family: var(--font-family);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
+  border-bottom: 3px solid transparent;
 }
 
 .tab:hover {
@@ -300,9 +297,9 @@
 }
 
 .tabActive {
-  background: #ffffff !important;
+  background: transparent !important;
   color: var(--text-primary) !important;
-  box-shadow: var(--shadow-sm);
+  border-bottom: 3px solid var(--text-primary) !important;
   font-weight: 600;
 }
 

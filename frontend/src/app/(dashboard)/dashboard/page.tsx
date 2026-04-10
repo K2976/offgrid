@@ -2,201 +2,184 @@
 
 import React from 'react';
 import { 
-  Users, 
-  MousePointerClick, 
-  BarChart2, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  Target,
+  BarChart2,
+  PieChart,
+  Megaphone,
+  Download,
+  Activity,
+  ChevronRight,
   TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight
+  Sparkles,
+  Search,
+  Users
 } from 'lucide-react';
-import { Card, Badge, StatCard } from '@/components/ui/ui-components';
-import { formatNumber, formatPercent } from '@/lib/utils';
+import { Card, Button, Badge } from '@/components/ui/ui-components';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  Legend
 } from 'recharts';
 import styles from '../dashboard.module.css';
 
-const kpis = [
-  { label: 'Web Visits', value: '45.2K', change: '12%', trend: 'up' as const },
-  { label: 'Conversion Rate', value: '3.4%', change: '0.2%', trend: 'up' as const },
-  { label: 'Campaign Clicks', value: '12.1K', change: '4%', trend: 'down' as const },
-  { label: 'Engagement', value: '8.2%', change: '1.4%', trend: 'up' as const },
+const trafficData = [
+  { name: 'Mon', organic: 4000, paid: 2400 },
+  { name: 'Tue', organic: 3000, paid: 1398 },
+  { name: 'Wed', organic: 2000, paid: 9800 },
+  { name: 'Thu', organic: 2780, paid: 3908 },
+  { name: 'Fri', organic: 1890, paid: 4800 },
+  { name: 'Sat', organic: 2390, paid: 3800 },
+  { name: 'Sun', organic: 3490, paid: 4300 },
 ];
 
-const analyticsData = [
-  { day: 'Mon', organic: 4000, referral: 2400, direct: 2400 },
-  { day: 'Tue', organic: 3000, referral: 1398, direct: 2210 },
-  { day: 'Wed', organic: 2000, referral: 9800, direct: 2290 },
-  { day: 'Thu', organic: 2780, referral: 3908, direct: 2000 },
-  { day: 'Fri', organic: 1890, referral: 4800, direct: 2181 },
-  { day: 'Sat', organic: 2390, referral: 3800, direct: 2500 },
-  { day: 'Sun', organic: 3490, referral: 4300, direct: 2100 },
-];
-
-const trafficTable = [
-  { channel: 'Google', sessions: 24500, time: '02:14', rate: '4.2%', progress: 85 },
-  { channel: 'Facebook', sessions: 12300, time: '01:45', rate: '2.8%', progress: 45 },
-  { channel: 'Direct', sessions: 8400, time: '03:10', rate: '5.1%', progress: 30 },
-  { channel: 'Email', sessions: 5200, time: '04:20', rate: '6.4%', progress: 20 },
-];
-
-export default function DashboardPage() {
+export default function Dashboard() {
   return (
     <div>
       <div className={styles.pageHeader}>
         <div>
-          <h1 className={styles.pageTitle}>Dashboard</h1>
-          <p className={styles.pageSubtitle}>Welcome back, here is what is happening today.</p>
+          <h1 className={styles.pageTitle} style={{ fontSize: '24px', fontWeight: 600 }}>Channel dashboard</h1>
+        </div>
+        <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+          <Button variant="ghost" size="sm" style={{ border: '1px solid var(--border-default)', borderRadius: '50%', width: 40, height: 40, padding: 0 }}><Activity size={18} /></Button>
+          <Button variant="ghost" size="sm" style={{ border: '1px solid var(--border-default)', borderRadius: '50%', width: 40, height: 40, padding: 0 }}><Download size={18} /></Button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className={styles.pageGrid} style={{ marginBottom: 'var(--spacing-xl)' }}>
-        {kpis.map((k) => (
-          <StatCard 
-            key={k.label} 
-            label={k.label} 
-            value={k.value} 
-            change={k.change} 
-            trend={k.trend} 
-          />
-        ))}
-      </div>
-
-      {/* Web Analytics Chart */}
-      <Card style={{ marginBottom: 'var(--spacing-xl)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--spacing-xl)' }}>
-          <div>
-            <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600 }}>Web Analytics</h3>
-            <div style={{ display: 'flex', gap: 'var(--spacing-xl)', marginTop: 'var(--spacing-md)' }}>
-              <div>
-                <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>124.5K</div>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>Page Views</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>02:14</div>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>Avg. Visit Duration</div>
-              </div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
-            <Badge color="primary">Organic</Badge>
-            <Badge color="info">Referral</Badge>
-            <Badge color="warning">Direct</Badge>
-          </div>
-        </div>
-
-        <div style={{ height: 300, width: '100%' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={analyticsData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }} />
-              <Tooltip 
-                contentStyle={{ borderRadius: 8, border: 'none', boxShadow: 'var(--shadow-md)' }} 
-              />
-              <Line type="monotone" dataKey="organic" stroke="var(--color-primary)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="referral" stroke="var(--color-accent)" strokeWidth={3} dot={false} />
-              <Line type="monotone" dataKey="direct" stroke="var(--color-warning)" strokeWidth={3} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      {/* Traffic + Channel Data */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--spacing-xl)' }}>
-        {/* Left: Traffic Table */}
-        <Card>
-          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, marginBottom: 'var(--spacing-lg)' }}>Traffic Sources</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-size-sm)' }}>
-              <thead style={{ color: 'var(--text-secondary)', textAlign: 'left' }}>
-                <tr>
-                  <th style={{ paddingBottom: 'var(--spacing-md)', fontWeight: 500 }}>Channel</th>
-                  <th style={{ paddingBottom: 'var(--spacing-md)', fontWeight: 500 }}>Sessions</th>
-                  <th style={{ paddingBottom: 'var(--spacing-md)', fontWeight: 500 }}>Traffic %</th>
-                  <th style={{ paddingBottom: 'var(--spacing-md)', fontWeight: 500 }}>Avg. Time</th>
-                  <th style={{ paddingBottom: 'var(--spacing-md)', fontWeight: 500 }}>Conv. Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trafficTable.map((row) => (
-                  <tr key={row.channel} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: 'var(--spacing-md) 0', fontWeight: 500 }}>{row.channel}</td>
-                    <td style={{ padding: 'var(--spacing-md) 0' }}>{formatNumber(row.sessions)}</td>
-                    <td style={{ padding: 'var(--spacing-md) 0', width: 140 }}>
-                      <div style={{ width: '100%', height: 6, background: 'var(--bg-surface-raised)', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ width: `${row.progress}%`, height: '100%', background: 'var(--color-primary)' }} />
-                      </div>
-                    </td>
-                    <td style={{ padding: 'var(--spacing-md) 0' }}>{row.time}</td>
-                    <td style={{ padding: 'var(--spacing-md) 0' }}>{row.rate}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        {/* Right: Top Channels Card */}
-        <Card>
-          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>Top Channels</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-            <div>
-              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>50.4K</div>
-              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>Total Visitors</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(350px, 1fr) minmax(350px, 1.2fr)', gap: 'var(--spacing-lg)' }}>
+        
+        {/* LEFT COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+          
+          {/* Latest Video Performance (Mapped to Latest Campaign) */}
+          <Card style={{ padding: 'var(--spacing-lg)' }}>
+            <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>Latest campaign performance</h2>
+            <div style={{ background: '#000', borderRadius: 8, padding: 'var(--spacing-xl)', marginBottom: 'var(--spacing-lg)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(45deg, rgba(62,166,255,0.1), transparent)', zIndex: 0 }} />
+               <div style={{ position: 'relative', zIndex: 1, padding: 'var(--spacing-md)' }}>
+                  <Sparkles size={24} color="var(--color-primary)" style={{ margin: '0 auto 8px' }} />
+                  <h3 style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: 'var(--font-size-xl)' }}>LogCipher</h3>
+                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 4 }}>P.S - Artificial Intelligence based Log Investigation</p>
+                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-primary)', marginTop: 8 }}>LogCipher | P.S - AI based Log Investigation Framework for Next-Generation Cyber...</p>
+               </div>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-              {trafficTable.slice(0, 3).map((row, idx) => (
-                <div key={idx}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-size-xs)', marginBottom: 4 }}>
-                    <span style={{ fontWeight: 500 }}>{row.channel}</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>{formatNumber(row.sessions)}</span>
-                  </div>
-                  <div style={{ width: '100%', height: 8, background: 'var(--bg-surface-raised)', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ 
-                      width: `${row.progress}%`, 
-                      height: '100%', 
-                      background: idx === 0 ? 'var(--color-primary)' : idx === 1 ? 'var(--color-accent)' : 'var(--color-success)' 
-                    }} />
-                  </div>
-                </div>
-              ))}
+            <div style={{ borderBottom: '1px solid var(--border-default)', marginBottom: 'var(--spacing-md)', paddingBottom: 'var(--spacing-md)' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-size-sm)', marginBottom: 8, color: 'var(--text-secondary)' }}>
+                 <span>First 85 days 1 hour</span>
+               </div>
+               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
+                 <span>Views</span>
+                 <span style={{ fontWeight: 600 }}>7</span>
+               </div>
+               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
+                 <span>Impressions click-through rate</span>
+                 <span style={{ fontWeight: 600 }}>2.7%</span>
+               </div>
+               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 'var(--font-size-sm)' }}>
+                 <span>Average view duration</span>
+                 <span style={{ fontWeight: 600 }}>1:31</span>
+               </div>
             </div>
-          </div>
-        </Card>
-      </div>
 
-      {/* Autopilot Insights */}
-      <Card style={{ marginTop: 'var(--spacing-xl)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
-          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-             Autopilot Insights
-          </h3>
-          <Badge color="success">Live</Badge>
+            <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+              <Button variant="secondary" size="sm" style={{ flex: 1, borderRadius: 20 }}>GO TO VIDEO ANALYTICS</Button>
+              <Button variant="secondary" size="sm" style={{ flex: 1, borderRadius: 20 }}>SEE COMMENTS (0)</Button>
+            </div>
+          </Card>
+
+          {/* Create Post Prompt */}
+          <Card style={{ padding: 'var(--spacing-xl)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px dashed var(--border-strong)' }}>
+            <div style={{ width: 80, height: 80, background: 'var(--bg-surface-raised)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--spacing-md)', position: 'relative' }}>
+              <Megaphone size={32} color="var(--color-accent)" />
+              <div style={{ position: 'absolute', right: -10, top: 0, width: 24, height: 24, background: '#fff', borderRadius: '50%', border: '2px solid var(--bg-surface)' }} />
+            </div>
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-lg)', maxWidth: 200, lineHeight: 1.6 }}>
+               Create your first post to start a conversation and get feedback from your community.
+            </p>
+            <Button variant="secondary" style={{ borderRadius: 20, background: '#fff', color: '#000', fontWeight: 600 }}>Create post</Button>
+          </Card>
+
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--spacing-md)' }}>
-           <div style={{ background: 'var(--bg-surface-raised)', padding: 'var(--spacing-md)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
-             <h4 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Action Recommended</h4>
-             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>Publish your scheduled LinkedIn article. Reach today is tracking 12% higher than average.</p>
-           </div>
-           <div style={{ background: 'var(--bg-surface-raised)', padding: 'var(--spacing-md)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
-             <h4 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Engagement Alert</h4>
-             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>You have 3 unread high-priority DMs on Instagram from potential leads.</p>
-           </div>
-           <div style={{ background: 'var(--bg-surface-raised)', padding: 'var(--spacing-md)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
-             <h4 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Content Idea</h4>
-             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>Based on trending topics in your sector, consider a post about "Remote Work Tools".</p>
-           </div>
+
+
+        {/* RIGHT COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+          
+          {/* Channel Analytics */}
+          <Card style={{ padding: 'var(--spacing-lg)' }}>
+             <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: '24px' }}>Channel analytics</h2>
+             <div style={{ marginBottom: '24px', borderBottom: '1px solid var(--border-default)', paddingBottom: '24px' }}>
+                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>Current subscribers</div>
+                <div style={{ fontSize: '48px', fontWeight: 400, marginTop: '8px' }}>1</div>
+             </div>
+
+             <div style={{ marginBottom: '16px' }}>
+                <h3 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>Summary</h3>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>Last 28 days</div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
+                   <span>Views</span>
+                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>0 <span style={{ color: 'var(--text-tertiary)' }}>—</span></span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)' }}>
+                   <span>Watch time (hours)</span>
+                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>0.0 <span style={{ color: 'var(--text-tertiary)' }}>—</span></span>
+                </div>
+             </div>
+
+             <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>Top content</h3>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Last 48 hours · Views</div>
+                {/* Traffic Recharts substitution for top content */}
+                <div style={{ height: 120, width: '100%', marginTop: 8 }}>
+                   <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trafficData}>
+                      <defs>
+                        <linearGradient id="colorO" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-tertiary)', fontSize: 11 }} />
+                      <Tooltip contentStyle={{ background: 'var(--bg-surface-raised)', border: 'none', borderRadius: 4, color: '#fff' }} />
+                      <Area type="monotone" dataKey="organic" stroke="var(--color-primary)" fillOpacity={1} fill="url(#colorO)" />
+                    </AreaChart>
+                   </ResponsiveContainer>
+                </div>
+             </div>
+
+             <Button variant="secondary" size="md" style={{ borderRadius: 20, width: 'max-content' }}>GO TO CHANNEL ANALYTICS</Button>
+          </Card>
+
+          {/* What's new in Studio */}
+          <Card style={{ padding: 'var(--spacing-lg)' }}>
+             <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, marginBottom: '24px' }}>What's new in Studio</h2>
+             <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <a href="#" style={{ paddingTop: '8px', paddingBottom: '16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
+                   Increasing Shorts length
+                </a>
+                <a href="#" style={{ paddingTop: '16px', paddingBottom: '16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
+                   Expansion of channel permissions
+                </a>
+                <a href="#" style={{ paddingTop: '16px', paddingBottom: '16px', fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
+                   Upcoming changes to Community Guidelines warnings
+                </a>
+             </div>
+          </Card>
+
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
