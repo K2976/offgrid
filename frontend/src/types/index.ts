@@ -28,6 +28,7 @@ export interface UserProfile {
   email: string;
   name: string;
   company_name?: string;
+  website_url?: string;
   onboarding_complete: boolean;
 }
 

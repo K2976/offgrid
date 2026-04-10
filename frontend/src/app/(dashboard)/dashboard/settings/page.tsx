@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Settings as SettingsIcon, Link2, Unlink, Bot } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings as SettingsIcon, Link2, Unlink, Bot, Globe, User, Save, CheckCircle } from 'lucide-react';
 import { Card, Button, Badge, Input, Select } from '@/components/ui/ui-components';
+import { useAuthStore } from '@/stores/auth-store';
+import api from '@/lib/api';
 import styles from '../../dashboard.module.css';
 
 const mockIntegrations = [
@@ -13,30 +15,101 @@ const mockIntegrations = [
 ];
 
 export default function SettingsPage() {
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+  const user = useAuthStore((s) => s.user);
+
   const [mode, setMode] = useState('general');
   const [goals, setGoals] = useState('growth');
   const [autopilot, setAutopilot] = useState(true);
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
-  const saveWebsiteProfile = () => {
+  // Load profile on mount to get website_url from backend
+  useEffect(() => {
+    const load = async () => {
+      const profile = await fetchMe();
+      if (profile?.website_url) {
+        setWebsiteUrl(profile.website_url);
+      }
+      setProfileLoaded(true);
+    };
+    load();
+  }, [fetchMe]);
+
+  const saveWebsiteProfile = async () => {
     if (!websiteUrl.trim()) return;
-    localStorage.setItem('preferred_website_url', websiteUrl.trim());
-    setSavedMsg('Website profile saved. Analytics dashboard will use this URL.');
-  };
-
-  React.useEffect(() => {
-    const preferred = localStorage.getItem('preferred_website_url');
-    if (preferred) {
-      setWebsiteUrl(preferred);
+    setSaving(true);
+    setSavedMsg('');
+    try {
+      await api.patch('/settings/website-url', { website_url: websiteUrl.trim() });
+      // Also update localStorage for analytics page to use immediately
+      localStorage.setItem('preferred_website_url', websiteUrl.trim());
+      setSavedMsg('Website URL saved successfully. Analytics dashboard will use this URL.');
+      // Refresh user profile
+      await fetchMe();
+    } catch {
+      setSavedMsg('Failed to save website URL. Please try again.');
+    } finally {
+      setSaving(false);
     }
-  }, []);
+  };
 
   return (
     <div>
       <div className={styles.sectionHeader}>
         <h1 className={styles.pageTitle}>Settings</h1>
       </div>
+
+      {/* User Profile */}
+      <Card style={{ marginBottom: 'var(--spacing-xl)' }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--spacing-lg)', fontWeight: 600 }}>
+          <User size={18} color="var(--color-primary-light)" /> Profile
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
+          <div>
+            <label style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Name</label>
+            <div style={{ padding: '10px 12px', background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)' }}>
+              {user?.name || '—'}
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Email</label>
+            <div style={{ padding: '10px 12px', background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)' }}>
+              {user?.email || '—'}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Website Profile — saves to backend */}
+      <Card style={{ marginBottom: 'var(--spacing-xl)' }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--spacing-lg)', fontWeight: 600 }}>
+          <Globe size={18} color="var(--color-primary-light)" /> Website Profile
+        </h3>
+        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-md)' }}>
+          Set your primary website URL. The dashboard and analytics pages will use this to run PageSpeed audits and show performance data.
+        </p>
+        <Input
+          label="Primary Website URL"
+          placeholder="https://yourwebsite.com"
+          value={websiteUrl}
+          onChange={(e) => { setWebsiteUrl(e.target.value); setSavedMsg(''); }}
+          data-testid="settings-website-url-input"
+        />
+        <div style={{ marginTop: 'var(--spacing-md)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+          <Button onClick={saveWebsiteProfile} isLoading={saving} data-testid="settings-save-website-button">
+            <Save size={14} style={{ marginRight: 6 }} /> Save Website URL
+          </Button>
+          {savedMsg && (
+            <span style={{ fontSize: 'var(--font-size-sm)', color: savedMsg.includes('Failed') ? 'var(--color-danger)' : 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              {!savedMsg.includes('Failed') && <CheckCircle size={14} />}
+              {savedMsg}
+            </span>
+          )}
+        </div>
+      </Card>
 
       {/* Workspace Config */}
       <Card style={{ marginBottom: 'var(--spacing-xl)' }}>
@@ -104,22 +177,6 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
-      </Card>
-
-      <Card style={{ marginTop: 'var(--spacing-xl)' }}>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--spacing-lg)', fontWeight: 600 }}>
-          <Link2 size={18} color="var(--color-primary-light)" /> Website Profile
-        </h3>
-        <Input
-          label="Primary Website URL"
-          placeholder="https://yourwebsite.com"
-          value={websiteUrl}
-          onChange={(e) => setWebsiteUrl(e.target.value)}
-        />
-        <div style={{ marginTop: 'var(--spacing-md)', display: 'flex', justifyContent: 'flex-end' }}>
-          <Button onClick={saveWebsiteProfile}>Save Website URL</Button>
-        </div>
-        {savedMsg && <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--color-success)' }}>{savedMsg}</p>}
       </Card>
     </div>
   );

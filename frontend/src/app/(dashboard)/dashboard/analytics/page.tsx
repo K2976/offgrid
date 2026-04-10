@@ -26,7 +26,7 @@ const seoMock = [
 
 export default function AnalyticsPage() {
   const [tab, setTab] = useState('social');
-  const [websiteUrl, setWebsiteUrl] = useState('https://example.com');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   const [strategy, setStrategy] = useState<'mobile' | 'desktop'>('mobile');
   const { websiteAudit, fetchWebsiteAudit, isLoading, error } = useAnalyticsStore();
 
@@ -39,12 +39,28 @@ export default function AnalyticsPage() {
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const preferred = localStorage.getItem('preferred_website_url');
-    if (preferred) {
-      setWebsiteUrl(preferred);
-    }
+    const loadUrl = async () => {
+      // Try to load from user profile first
+      try {
+        const { default: api } = await import('@/lib/api');
+        const res = await api.get('/auth/me');
+        if (res.data?.website_url) {
+          setWebsiteUrl(res.data.website_url);
+          return;
+        }
+      } catch {
+        // fallback to localStorage
+      }
+      if (typeof window !== 'undefined') {
+        const preferred = localStorage.getItem('preferred_website_url');
+        if (preferred) {
+          setWebsiteUrl(preferred);
+        }
+      }
+    };
+    loadUrl();
   }, []);
+
 
   return (
     <div>

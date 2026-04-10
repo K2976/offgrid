@@ -26,5 +26,5 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/me")
-def me(user: User = Depends(get_current_user)):
-    return get_current_user_profile(user)
+def me(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return get_current_user_profile(user, db)

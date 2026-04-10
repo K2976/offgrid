@@ -97,6 +97,13 @@
   margin-bottom: var(--spacing-lg);
 }
 
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xl);
+}
+
 .pageTitle {
   font-size: var(--font-size-2xl);
   font-weight: 700;

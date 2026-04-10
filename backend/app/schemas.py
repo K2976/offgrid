@@ -36,7 +36,12 @@ class UserProfileResponse(BaseModel):
     email: EmailStr
     name: str
     company_name: str | None = None
+    website_url: str | None = None
     onboarding_complete: bool = False
+
+
+class WebsiteUrlRequest(BaseModel):
+    website_url: str = Field(min_length=1, max_length=500)
 
 
 class AnalyticsOverviewResponse(BaseModel):
@@ -114,6 +119,7 @@ class OnboardingProfileRequest(BaseModel):
     autopilot_enabled: bool = True
     autopilot_time: str = Field(default="08:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     company_name: str | None = Field(default=None, max_length=200)
+    website_url: str | None = Field(default=None, max_length=500)
 
 
 class BasicMessageResponse(BaseModel):

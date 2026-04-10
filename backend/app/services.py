@@ -92,13 +92,19 @@ def login_user(db: Session, payload: LoginRequest) -> dict:
     }
 
 
-def get_current_user_profile(user: User) -> dict:
-    onboarding_complete = bool(user.company_name)
+def get_current_user_profile(user: User, db: Session | None = None) -> dict:
+    onboarding_complete = False
+    if db:
+        workspace = db.query(Workspace).filter(Workspace.user_id == user.id).first()
+        onboarding_complete = bool(workspace and (workspace.goals or user.company_name))
+    else:
+        onboarding_complete = bool(user.company_name)
     return {
         "id": user.id,
         "email": user.email,
         "name": user.name,
         "company_name": user.company_name,
+        "website_url": getattr(user, "website_url", None),
         "onboarding_complete": onboarding_complete,
     }
 
@@ -1253,6 +1259,8 @@ def upsert_onboarding_profile(db: Session, user: User, payload: OnboardingProfil
     workspace.autopilot_enabled = payload.autopilot_enabled
     workspace.autopilot_time = payload.autopilot_time
     user.company_name = payload.company_name
+    if payload.website_url is not None:
+        user.website_url = payload.website_url
 
     db.commit()
     db.refresh(workspace)
@@ -1269,5 +1277,13 @@ def upsert_onboarding_profile(db: Session, user: User, payload: OnboardingProfil
             "autopilot_enabled": workspace.autopilot_enabled,
             "autopilot_time": workspace.autopilot_time,
         },
-        "user": get_current_user_profile(user),
+        "user": get_current_user_profile(user, db),
     }
+
+
+def update_user_website_url(db: Session, user: User, website_url: str) -> dict:
+    user.website_url = website_url
+    db.commit()
+    db.refresh(user)
+    return {"message": "Website URL updated", "website_url": user.website_url}
+
